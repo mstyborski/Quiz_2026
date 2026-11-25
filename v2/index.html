@@ -190,9 +190,44 @@ function tvPage(){
    if(remaining()<=0&&pin&&!auto[st.game+st.i]){auto[st.game+st.i]=1;post({type:"host",cmd:"reveal",pin:pin});setTimeout(tick,700)}}},300);
  draw();tick();setInterval(tick,1500)}
 
+
+/* ---------- Grand Prix (wiele rund, punkty się kumulują) ---------- */
+function gpPage(){
+ var name=ls("gpn"),Q=[],TIME=20,round=0,ch=[],ms=[],t0=0,tm=null,i=0;
+ function when(t){try{return new Date(t).toLocaleString("pl-PL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+ function board(d){if(!d.rank||!d.rank.length)return"";var rows=d.rank.slice(0,10).map(function(r){return{name:r.name,pts:r.total}});var mx=rows[0].pts||1,me=d.me?'<div class="msg">Twoje miejsce: <b>'+d.me.place+'</b> z '+d.me.of+', razem <b>'+d.me.total+'</b> pkt (rozegrane rundy: '+d.me.rounds+').</div>':"";return'<h2 style="margin-top:30px">Klasyfikacja generalna</h2>'+me+rankHtml(rows,10,mx)}
+ function home(){show('<p class="sub">Ładowanie…</p>');get("action=gp&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){
+  var h='<p class="eyebrow">Quiz żeglarski · Grand Prix</p><h1 class="big">'+esc(d.name||"Grand Prix")+'</h1>';
+  if(!d.on){h+='<div class="msg">Grand Prix nie jest teraz aktywne.</div>'}
+  else if(d.round){
+   var lim=d.limit<50,tries=d.tries||0,blocked=lim&&tries>=d.limit;
+   h+='<p class="sub">Runda '+d.round.n+' · otwarta do: '+esc(when(d.round.end))+'</p><p class="sub">'+d.round.count+' pytań, '+(d.time||20)+' s na każde. '+(d.best?'W klasyfikacji liczy się najlepszy wynik z rundy.':'W klasyfikacji liczy się pierwsza próba w rundzie.')+(lim?' Próby: '+tries+' z '+d.limit+'.':'')+'</p>';
+   if(blocked)h+='<div class="msg">Wykorzystano wszystkie próby w tej rundzie. Wróć w kolejną niedzielę.</div>';
+   else h+='<input class="name" id="nm" maxlength="20" placeholder="Pseudonim (np. nazwa rodziny)" value="'+esc(name)+'"><button class="btn" id="go">Start</button>'}
+  else{h+='<div class="msg">Nie ma teraz otwartej rundy.'+(d.next?' Następna, runda '+d.next.n+', startuje: '+esc(when(d.next.start))+'.':'')+'</div>'}
+  show(h+board(d));
+  var b=document.getElementById("go");if(b)b.onclick=begin}).catch(function(){err(home)})}
+ function begin(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;
+  claim("gp",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty przez inne urządzenie. Wybierz inny.</div>');return}
+   name=v;ls("gpn",name);
+   get("action=gpquestions").then(function(d){if(!d.ok||!d.questions||!d.questions.length){home();return}Q=d.questions;TIME=d.time||20;round=d.round;i=0;ch=[];ms=[];ask()}).catch(function(){err(home)})})}
+ function ask(){var q=Q[i];t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1}));
+  Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){pick(+b.getAttribute("data-i"))}});
+  clearInterval(tm);tm=setInterval(function(){var l=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000)),e=document.getElementById("tm");if(e)e.textContent=l+" s";if(l<=0)pick(-1)},250)}
+ function pick(k){clearInterval(tm);ch[i]=k;ms[i]=k<0?TIME*1000:Date.now()-t0;var q=Q[i];
+  show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{pick:k,dim:[1,1,1,1].map(function(x,j){return j===k?0:1})}));
+  setTimeout(function(){i++;if(i>=Q.length)send();else ask()},600)}
+ function send(){show('<p class="sub">Zapisuję wynik…</p>');
+  get("action=gpsubmit&round="+round+"&name="+encodeURIComponent(name)+"&tok="+tok()+"&a="+ch.join(",")+"&m="+ms.join(",")).then(function(r){
+   if(!r.ok){var t=r.taken?"Ten pseudonim jest zajęty przez inne urządzenie.":r.limit?"Wykorzystano wszystkie próby w tej rundzie.":r.closed?"Ta runda została już zamknięta, wynik nie został zapisany.":"Nie udało się zapisać wyniku.";show('<p class="eyebrow">Grand Prix</p><h1 class="big">Wynik niezapisany</h1><div class="msg">'+t+'</div><p><button class="btn ghost" id="hm" style="margin-top:20px">Wróć</button></p>');document.getElementById("hm").onclick=home;return}
+   var det=r.details.map(function(x,j){var q=Q[j];return'<div class="rowb" style="margin-top:8px;font-size:17px"><span>'+(j+1)+'. '+esc(q.q)+'<br><small>'+(x.ok?'<span class="ok">dobrze</span>':'<span class="bad">źle</span>')+' · poprawna odpowiedź: '+LET[x.c]+'. '+esc(q.o[x.c])+'</small></span></div>'}).join("");
+   show('<p class="eyebrow">Runda '+round+' · zakończona</p><h1 class="big">'+esc(name)+': '+r.pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+r.good+' z '+r.n+'. Próba nr '+r.attempt+'.<br>Klasyfikacja generalna: miejsce <b>'+r.place+'</b> z '+r.of+', razem <b>'+r.total+'</b> pkt.</div>'+det+'<p><button class="btn" id="hm" style="margin-top:20px">'+(r.left>0?'Zagraj jeszcze raz / klasyfikacja':'Klasyfikacja')+'</button></p>');document.getElementById("hm").onclick=home}).catch(function(){show('<p class="eyebrow">Grand Prix</p><h1 class="big">Brak połączenia</h1><div class="msg">Wynik nie został jeszcze zapisany.</div><p><button class="btn" id="rt" style="margin-top:20px">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=send})}
+ home()}
+
 /* ---------- Start ---------- */
 function boot(){
  if(hash==="tv"){tvPage();return}
+ if(hash==="gp"){gpPage();return}
  if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Aparat telefonu otwiera quiz bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
  show('<p class="sub">Ładowanie quizu…</p>');
  get("action=config").then(function(c){

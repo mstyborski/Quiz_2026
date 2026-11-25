@@ -10,10 +10,13 @@ function nkey_(n) { return String(n).trim().toLowerCase().replace(/\s+/g, ' '); 
 // Rezerwacja pseudonimu w danej grze ('free' w trybie dowolnym, id gry na żywo).
 // Ten sam kod urządzenia może wracać; inny kod dostaje taken=1.
 function claim_(scope, name, tok) {
+  var lock = LockService.getScriptLock(); lock.waitLock(8000);
+  try { return claimCore_(scope, name, tok); } finally { lock.releaseLock(); }
+}
+function claimCore_(scope, name, tok) {
   var key = nkey_(name);
   if (!key) return { ok: 0 };
-  var lock = LockService.getScriptLock(); lock.waitLock(8000);
-  try {
+  {
     var s = sh_(NAMES);
     if (!s) { s = SpreadsheetApp.getActive().insertSheet(NAMES); s.appendRow(['Gra', 'Klucz', 'Pseudonim', 'Kod urządzenia', 'Czas']); s.setFrozenRows(1); }
     var last = s.getLastRow();
@@ -27,13 +30,13 @@ function claim_(scope, name, tok) {
     }
     s.appendRow([scope, key, String(name).trim().slice(0, 20), String(tok), new Date()]);
     return { ok: 1 };
-  } finally { lock.releaseLock(); }
+  }
 }
 
 function sh_(name) { return SpreadsheetApp.getActive().getSheetByName(name); }
 
 function cfg_() {
-  var rows = sh_('Sterowanie').getRange('A2:B12').getValues(), c = {};
+  var rows = sh_('Sterowanie').getRange('A2:B40').getValues(), c = {};
   rows.forEach(function (r) { if (r[0] !== '') c[String(r[0]).trim()] = r[1]; });
   var open = c['Odblokowane pytania (tryb dowolny)'];
   return {
@@ -42,7 +45,13 @@ function cfg_() {
     time: Number(c['Czas na pytanie (s)']) || 20,
     phone: String(c['Telefon w trybie na żywo pokazuje'] || '').indexOf('Tylko') === 0 ? 'buttons' : 'full',
     open: (open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
-    pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego'])
+    pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
+    gp: c['Grand Prix'] === 'Włączone',
+    gpName: String(c['Nazwa sezonu Grand Prix'] || 'Grand Prix'),
+    gpN: Number(c['Liczba pytań w rundzie']) || 5,
+    gpPool: String(c['Pula pytań (kategoria)'] || 'Wszystkie'),
+    gpLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Limit prób w rundzie']),
+    gpBest: String(c['Zasada punktów'] || '').indexOf('Tylko') !== 0
   };
 }
 
@@ -151,6 +160,186 @@ function stateOut_(p) {
   return out;
 }
 
+
+// ======================= GRAND PRIX =======================
+var GPA = 'Odpowiedzi GP', GPK = 'Klasyfikacja GP', GPT = 'Terminarz GP';
+
+function toDate_(v) { if (v === '' || v === null || v === undefined) return null; var d = v instanceof Date ? v : new Date(v); return isNaN(d.getTime()) ? null : d; }
+
+// Rundy z terminarza; status wg dat albo wymuszony ('Otwarta'/'Zamknięta')
+function rounds_() {
+  var s = sh_(GPT); if (!s || s.getLastRow() < 2) return [];
+  var now = Date.now(), out = [];
+  s.getRange(2, 1, s.getLastRow() - 1, 6).getValues().forEach(function (r) {
+    var n = Number(r[0]); if (!n) return;
+    var a = toDate_(r[1]), b = toDate_(r[2]), f = String(r[5] || '').trim(), st;
+    if (f === 'Otwarta' || f === 'Zamknięta') st = f;
+    else if (a && now < a.getTime()) st = 'Zaplanowana';
+    else if (b && now > b.getTime()) st = 'Zamknięta';
+    else st = 'Otwarta';
+    out.push({ n: n, start: a ? a.getTime() : 0, end: b ? b.getTime() : 0, pool: String(r[3] || ''), cnt: Number(r[4]) || 0, status: st });
+  });
+  return out;
+}
+function openRound_() {
+  var rs = rounds_().filter(function (r) { return r.status === 'Otwarta'; });
+  return rs.length ? rs[rs.length - 1] : null;
+}
+function nextRound_() {
+  var rs = rounds_().filter(function (r) { return r.status === 'Zaplanowana'; });
+  rs.sort(function (a, b) { return a.start - b.start; });
+  return rs[0] || null;
+}
+
+// Te same pytania w tej samej kolejności dla wszystkich graczy danej rundy
+function roundQuestions_(round, c) {
+  var pool = round.pool && round.pool !== 'Wszystkie' ? round.pool : c.gpPool;
+  var qs = questions_(pool === 'Wszystkie' ? '' : pool).sort(function (a, b) { return a.id - b.id; });
+  var seed = round.n * 7919 + 13;
+  function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+  for (var i = qs.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = qs[i]; qs[i] = qs[j]; qs[j] = t; }
+  return qs.slice(0, round.cnt || c.gpN);
+}
+
+function gpRows_() {
+  var s = sh_(GPA); if (!s || s.getLastRow() < 2) return [];
+  return s.getRange(2, 1, s.getLastRow() - 1, 7).getValues();   // czas, runda, klucz, pseudonim, próba, punkty, poprawne
+}
+
+function gpRanking_(c) {
+  var by = {}, maxRound = 0;
+  gpRows_().forEach(function (r) {
+    var k = String(r[2]), n = Number(r[1]), pts = Number(r[5]) || 0; if (!k) return;
+    if (n > maxRound) maxRound = n;
+    var p = by[k] || (by[k] = { name: String(r[3]), key: k, per: {}, total: 0, rounds: 0 });
+    if (p.per[n] === undefined) p.per[n] = pts;
+    else if (c.gpBest && pts > p.per[n]) p.per[n] = pts;
+  });
+  var arr = Object.keys(by).map(function (k) {
+    var p = by[k]; Object.keys(p.per).forEach(function (n) { p.total += p.per[n]; p.rounds++; }); return p;
+  });
+  arr.sort(function (a, b) { return b.total - a.total || b.rounds - a.rounds; });
+  rounds_().forEach(function (r) { if (r.n > maxRound) maxRound = r.n; });
+  arr.maxRound = Math.min(Math.max(maxRound, 1), 20);
+  return arr;
+}
+
+// Odświeża zakładkę 'Klasyfikacja GP' (czytelną dla prowadzącego i do wykresu)
+function writeGpSheet_(c) {
+  var arr = gpRanking_(c), m = arr.maxRound, s = sh_(GPK);
+  if (!s) s = SpreadsheetApp.getActive().insertSheet(GPK);
+  var head = ['Miejsce', 'Pseudonim', 'Suma', 'Rozegrane rundy'], k;
+  for (k = 1; k <= m; k++) head.push('Runda ' + k);
+  var rows = arr.map(function (p, i) {
+    var row = [i + 1, p.name, p.total, p.rounds];
+    for (var n = 1; n <= m; n++) row.push(p.per[n] === undefined ? '' : p.per[n]);
+    return row;
+  });
+  s.getRange(1, 1, 200, 24).clearContent();   // kolumny Z:AA (dane wykresu) zostają
+  s.getRange(1, 1, 1, head.length).setValues([head]);
+  if (rows.length) s.getRange(2, 1, rows.length, head.length).setValues(rows);
+}
+
+function gpPublic_(c, name) {
+  var cache = CacheService.getScriptCache(), hit = cache.get('gprank'), rk;
+  if (hit) rk = JSON.parse(hit);
+  else {
+    rk = gpRanking_(c).slice(0, 30).map(function (p) { return { name: p.name, key: p.key, total: p.total, rounds: p.rounds }; });
+    cache.put('gprank', JSON.stringify(rk), 5);
+  }
+  var out = { on: c.gp, name: c.gpName, best: c.gpBest, limit: c.gpLimit, time: c.time, now: Date.now(), rank: rk.slice(0, 20) };
+  var r = openRound_(), nx = nextRound_();
+  if (c.gp && r) {
+    out.round = { n: r.n, end: r.end, start: r.start, count: roundQuestions_(r, c).length };
+    if (name) {
+      var key = nkey_(name);
+      out.tries = gpRows_().filter(function (x) { return Number(x[1]) === r.n && String(x[2]) === key; }).length;
+    }
+  }
+  if (c.gp && !r && nx) out.next = { n: nx.n, start: nx.start };
+  if (name) { rk.forEach(function (p, i) { if (p.key === nkey_(name)) out.me = { total: p.total, place: i + 1, rounds: p.rounds, of: rk.length }; }); }
+  return out;
+}
+
+function gpQuestions_(c, p) {
+  var r = openRound_();
+  if (!c.gp || !r) return { ok: 0, closed: 1 };
+  var qs = roundQuestions_(r, c);
+  return { ok: 1, round: r.n, end: r.end, time: c.time,
+    questions: qs.map(function (q) { return { id: q.id, q: q.q, o: q.o, cat: q.cat }; }) };
+}
+
+function gpSubmit_(c, p) {
+  var r = openRound_();
+  if (!c.gp || !r) return { ok: 0, closed: 1 };
+  if (Number(p.round) !== r.n) return { ok: 0, closed: 1 };
+  var name = String(p.name || '').trim().slice(0, 20), key = nkey_(name);
+  if (!key || !p.tok) return { ok: 0 };
+  var lock = LockService.getScriptLock(); lock.waitLock(8000);
+  try {
+    if (!claimCore_('gp', name, p.tok).ok) return { ok: 0, taken: 1 };
+    var rows = gpRows_().filter(function (x) { return Number(x[1]) === r.n && String(x[2]) === key; });
+    if (rows.length >= c.gpLimit) return { ok: 0, limit: 1 };
+    var qs = roundQuestions_(r, c), a = String(p.a || '').split(','), m = String(p.m || '').split(','), pts = 0, good = 0, det = [];
+    qs.forEach(function (q, i) {
+      var ch = Number(a[i]); if (isNaN(ch)) ch = -1;
+      var ms = Math.min(c.time * 1000, Math.max(0, Number(m[i]) || 0));
+      var ok = ch === q.c ? 1 : 0;
+      if (ok) { good++; pts += 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))); }
+      det.push({ ch: ch, c: q.c, ok: ok });
+    });
+    var s = sh_(GPA);
+    if (!s) { s = SpreadsheetApp.getActive().insertSheet(GPA); s.appendRow(['Czas', 'Runda', 'Klucz', 'Pseudonim', 'Próba', 'Punkty', 'Poprawne']); s.setFrozenRows(1); }
+    s.appendRow([new Date(), r.n, key, name, rows.length + 1, pts, good]);
+    CacheService.getScriptCache().remove('gprank');
+    writeGpSheet_(c);
+    var rk = gpRanking_(c), place = 0, tot = 0;
+    rk.forEach(function (x, i) { if (x.key === key) { place = i + 1; tot = x.total; } });
+    return { ok: 1, pts: pts, good: good, n: qs.length, attempt: rows.length + 1, details: det, total: tot, place: place, of: rk.length,
+      left: Math.max(0, c.gpLimit - rows.length - 1) };
+  } finally { lock.releaseLock(); }
+}
+
+// ----- Menu w arkuszu: archiwizacja sezonu i zwalnianie pseudonimów -----
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Quiz')
+    .addItem('Zakończ sezon Grand Prix i zarchiwizuj', 'archiveGp')
+    .addItem('Zwolnij pseudonim…', 'releaseName')
+    .addToUi();
+}
+function archiveGp() {
+  var ui = SpreadsheetApp.getUi(), c = cfg_();
+  if (ui.alert('Zarchiwizować klasyfikację "' + c.gpName + '" i zacząć nowy sezon od zera?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  archiveCore_(c);
+  ui.alert('Gotowe. Klasyfikacja została skopiowana do nowej zakładki, a sezon wyzerowany.');
+}
+function archiveCore_(c) {
+  writeGpSheet_(c);
+  var ss = SpreadsheetApp.getActive(), src = sh_(GPK);
+  var stamp = Utilities.formatDate(new Date(), 'Europe/Warsaw', 'yyyy-MM-dd HH-mm');
+  var dst = src.copyTo(ss); dst.setName(('Archiwum GP ' + stamp).slice(0, 90));
+  var a = sh_(GPA); if (a && a.getLastRow() > 1) a.getRange(2, 1, a.getLastRow() - 1, 7).clearContent();
+  var n = sh_(NAMES);
+  if (n && n.getLastRow() > 1) {
+    var rows = n.getRange(2, 1, n.getLastRow() - 1, 5).getValues();
+    for (var i = rows.length - 1; i >= 0; i--) if (String(rows[i][0]) === 'gp') n.deleteRow(i + 2);
+  }
+  writeGpSheet_(c);
+  CacheService.getScriptCache().remove('gprank');
+}
+function releaseName() {
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Jaki pseudonim zwolnić (Grand Prix i bieżące spotkanie)?');
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  ui.alert(releaseCore_(r.getResponseText()) + ' rezerwacji usunięto.');
+}
+function releaseCore_(name) {
+  var key = nkey_(name), n = sh_(NAMES), cnt = 0;
+  if (!n || n.getLastRow() < 2) return 0;
+  var rows = n.getRange(2, 1, n.getLastRow() - 1, 5).getValues();
+  for (var i = rows.length - 1; i >= 0; i--) if (String(rows[i][1]) === key) { n.deleteRow(i + 2); cnt++; }
+  return cnt;
+}
+
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
@@ -159,8 +348,11 @@ function doGet(e) {
     return json_({ time: c.time, open: c.open, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
+  if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
+  if (action === 'gpquestions') return json_(gpQuestions_(c, p));
+  if (action === 'gpsubmit') return json_(gpSubmit_(c, p));
   if (action === 'claim') {
-    var scope = p.scope === 'live' ? getState_().game : 'free';
+    var scope = p.scope === 'live' ? getState_().game : (p.scope === 'gp' ? 'gp' : 'free');
     if (!p.tok) return json_({ ok: 0 });
     return json_(claim_(scope, String(p.name || '').slice(0, 20), p.tok));
   }
