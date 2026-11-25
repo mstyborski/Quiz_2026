@@ -76,6 +76,7 @@ try{name=localStorage.getItem("qn")||""}catch(e){}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function pageUrl(){return location.href.split("#")[0]}
 function show(h){app.innerHTML='<div class="wrap">'+h+'</div>'}
+function intro(){show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań w blokach po dwa, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
 var open=0,wt=null;
 function poll(cb){try{fetch(SCRIPT_URL+"?t="+Date.now()).then(function(r){return r.json()}).then(function(d){open=Number(d.open)||0;if(cb)cb()}).catch(function(){if(cb)cb()})}catch(e){if(cb)cb()}}
 function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}name=v;try{localStorage.setItem("qn",name)}catch(e){}i=0;pts=0;good=0;poll(next)}
