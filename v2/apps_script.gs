@@ -2,6 +2,33 @@
 // Karty arkusza: Sterowanie, Pytania, Kategorie, Odpowiedzi, Odpowiedzi live, Ranking.
 
 var LIVE = 'Odpowiedzi live';
+var NAMES = 'Pseudonimy';   // rezerwacje pseudonimów: Gra, Klucz, Pseudonim, Kod urządzenia, Czas
+
+// Klucz pseudonimu: bez rozróżniania wielkości liter i nadmiarowych spacji.
+function nkey_(n) { return String(n).trim().toLowerCase().replace(/\s+/g, ' '); }
+
+// Rezerwacja pseudonimu w danej grze ('free' w trybie dowolnym, id gry na żywo).
+// Ten sam kod urządzenia może wracać; inny kod dostaje taken=1.
+function claim_(scope, name, tok) {
+  var key = nkey_(name);
+  if (!key) return { ok: 0 };
+  var lock = LockService.getScriptLock(); lock.waitLock(8000);
+  try {
+    var s = sh_(NAMES);
+    if (!s) { s = SpreadsheetApp.getActive().insertSheet(NAMES); s.appendRow(['Gra', 'Klucz', 'Pseudonim', 'Kod urządzenia', 'Czas']); s.setFrozenRows(1); }
+    var last = s.getLastRow();
+    if (last >= 2) {
+      var rows = s.getRange(2, 1, last - 1, 4).getValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i][0]) === scope && String(rows[i][1]) === key) {
+          return String(rows[i][3]) === String(tok) ? { ok: 1 } : { ok: 0, taken: 1 };
+        }
+      }
+    }
+    s.appendRow([scope, key, String(name).trim().slice(0, 20), String(tok), new Date()]);
+    return { ok: 1 };
+  } finally { lock.releaseLock(); }
+}
 
 function sh_(name) { return SpreadsheetApp.getActive().getSheetByName(name); }
 
@@ -132,12 +159,18 @@ function doGet(e) {
     return json_({ time: c.time, open: c.open, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
+  if (action === 'claim') {
+    var scope = p.scope === 'live' ? getState_().game : 'free';
+    if (!p.tok) return json_({ ok: 0 });
+    return json_(claim_(scope, String(p.name || '').slice(0, 20), p.tok));
+  }
   return json_({ error: 'unknown action' });
 }
 
 function doPost(e) {
   var d = JSON.parse(e.postData.contents), type = d.type || 'result', c = cfg_(), cache = CacheService.getScriptCache();
   if (type === 'result') {                                                   // wynik w trybie dowolnym
+    if (d.tok && !claim_('free', String(d.name).slice(0, 20), d.tok).ok) return json_({ ok: 0, taken: 1 });
     sh_('Odpowiedzi').appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good)]);
     return json_({ ok: 1 });
   }
@@ -145,6 +178,7 @@ function doPost(e) {
   var st = getState_(), name = String(d.name || '').slice(0, 20);
   if (!name) return json_({ ok: 0 });
   if (type === 'join') {
+    if (!d.tok || !claim_(st.game, name, d.tok).ok) return json_({ ok: 0, taken: 1 });
     if (!cache.get('j|' + st.game + '|' + name)) {
       cache.put('j|' + st.game + '|' + name, '1', 21600);
       sh_(LIVE).appendRow([new Date(), st.game, name, -1, -1, 0, 0, 0]);

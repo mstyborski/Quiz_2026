@@ -93,6 +93,8 @@ function show(h){app.innerHTML='<div class="wrap">'+h+'</div>'}
 function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
+function tok(){var t=ls("tok");if(!t){t=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36);ls("tok",t)}return t}
+function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){return d}).catch(function(){return{ok:1,offline:1}})}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
 function qr(el,size){if(el&&window.QRCode)new QRCode(el,{text:pageUrl(),width:size,height:size,correctLevel:QRCode.CorrectLevel.M})}
 function err(retry){show('<p class="eyebrow">Quiz żeglarski</p><h1 class="big">Brak połączenia</h1><div class="msg">Nie udało się pobrać quizu. Sprawdź internet i spróbuj ponownie.</div><p><button class="btn" id="rt">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=retry}
@@ -104,9 +106,10 @@ function freePlayer(Q,TIME,openStart){
  var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
  function intro(){show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
- function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)}
+ function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("free",v).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
+ function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
- function send(){post({type:"result",name:name,pts:pts,good:good})}
+ function send(){post({type:"result",name:name,pts:pts,good:good,tok:tok()})}
  function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':'Wracamy do prezentacji')+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
  function ask(){left=TIME;t0=Date.now();var q=Q[i];show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1}));
   Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){pick(+b.getAttribute("data-i"))}});
@@ -125,10 +128,10 @@ function livePlayer(){
  function key(){return st.game+"|"+st.i}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
- function nameScreen(){show('<p class="eyebrow">Quiz żeglarski · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name});lastSig="";draw()}}
+ function nameScreen(){show('<p class="eyebrow">Quiz żeglarski · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("live",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function draw(){
-  if(!joined){nameScreen();return}
+  if(!joined){if(!document.getElementById("nm"))nameScreen();return}
   if(!st){show('<p class="sub">Łączenie…</p>');return}
   var a=ans[key()],sig=[st.phase,st.i,st.game,a,st.me&&st.me.pts].join("|");if(sig===lastSig)return;lastSig=sig;
   var h="",q=st.q;
@@ -150,7 +153,7 @@ function livePlayer(){
  load();
  if(name&&ls("joined")===name)joined=true;
  draw();tick();setInterval(tick,2000);
- if(joined)post({type:"join",name:name})}
+ if(joined)claim("live",name).then(function(r){if(r.ok)post({type:"join",name:name,tok:tok()});else{joined=false;ls("joined","- ");lastSig="";draw()}})}
 
 /* ---------- Ekran na telewizor ---------- */
 function tvPage(){
