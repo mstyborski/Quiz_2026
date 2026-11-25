@@ -61,14 +61,15 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid #4A6A8A;b
 var TIME=20;
 var SCRIPT_URL="https://script.google.com/macros/s/AKfycbz4e9oBETSZ1E2W5HgDCMPa7KP2Uzk7VcQupOLNoCw4yFNaVEXits1yqmRA9E-XT5jb/exec";
 var Q=[
- {q:"Który jacht ma pierwszeństwo, gdy dwa jachty spotykają się na przeciwnych halsach?",o:["Ten na lewym halsie","Ten na prawym halsie","Ten większy","Ten, który płynie wolniej"],c:1},
- {q:"Jakiego koloru światło nawigacyjne świeci na sterburcie (prawej burcie)?",o:["Czerwone","Białe","Zielone","Żółte"],c:2},
- {q:"Ile stopni ma skala Beauforta (od 0 do…)?",o:["8","10","12","15"],c:2},
- {q:"1 węzeł to około…",o:["0,5 km/h","1,85 km/h","3,6 km/h","5 km/h"],c:1},
- {q:"Jak nazywa się lina służąca do regulacji ustawienia żagla względem wiatru?",o:["Fał","Szot","Cuma","Brasy"],c:1},
- {q:"Jak nazywa się lina służąca do podnoszenia żagla?",o:["Fał","Szot","Knaga","Wanta"],c:0},
- {q:"Jak nazywa się zwrot, w którym jacht przechodzi dziobem przez linię wiatru?",o:["Zwrot przez rufę","Zwrot przez sztag","Przystawanie","Dryf"],c:1},
- {q:"Ilu członków załogi ma klasa Flying Dutchman?",o:["1","2","3","4"],c:1}
+ {q:"Dopuszczalna masa łódki klasy Omega startującej w AMP to",o:["230 kg", "250 kg", "280 kg", "300 kg"],c:1},
+ {q:"Zwycięzcą Ekstraklasy PLŻ w sezonie 2026 był klub",o:["YKP Gdyni", "HRM Racing", "Legia Warszawa", "YC Gdańsk"],c:3},
+ {q:"Które miejsce w klasyfikacji sterników na AMP 2026 zajęła najlepsza załoga z Politechniki Gdańskiej?",o:["1", "2", "3", "4"],c:1},
+ {q:"W jakiej klasie rozgrywano tegoroczne AMŚ w żeglarstwie?",o:["RS 21", "Dolphin 21", "Melges 20", "Melges 24"],c:2},
+ {q:"Ile załóg wystawiła Politechnika Gdańska na AMP w 2026 roku?",o:["6", "5", "4", "3"],c:0},
+ {q:"Wiatr wieje z prędkością 10 węzłów. Ile to w przybliżeniu m/s?",o:["10 m/s", "18 m/s", "5 m/s", "3 m/s"],c:2},
+ {q:"Jak nazywa się poziomy drzewiec, do którego mocuje się dolny liek grota?",o:["Maszt", "Salingi", "Reling", "Bom"],c:3},
+ {q:"Ile razy załoga POL 377 z PG stanęła na podium w siedmiu rundach PP klasy Omega 2026 (łącznie z Mistrzostwami Polski)?",o:["4", "2", "3", "5"],c:0},
+ {q:"W którym z miejsc nie odbyły się regaty Młodzieżowej PLŻ w 2026 roku?",o:["Sopot", "Puck", "Gdynia", "Szczecin"],c:1}
 ];
 var LET=["A","B","C","D"];
 var app=document.getElementById("app"),i=0,pts=0,good=0,sel=-1,left=TIME,tm=null,t0=0,name="";
