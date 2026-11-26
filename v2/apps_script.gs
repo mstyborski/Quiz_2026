@@ -373,6 +373,12 @@ function onOpen() {
     .addItem('Usuń gracza / zwolnij pseudonim…', 'releaseName')
     .addToUi();
 }
+// Jednorazowo uruchom w edytorze (Uruchom), aby nadać zgody na Dysk i adresy zewnętrzne (iTunes).
+function authorize() {
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch('https://itunes.apple.com/search?term=queen&media=music&limit=1');
+  SpreadsheetApp.getActive().getName();
+}
 function checkMedia() {
   var c = cfg_(), lines = [];
   CacheService.getScriptCache().removeAll(['fm']);
