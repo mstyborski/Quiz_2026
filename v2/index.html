@@ -102,8 +102,8 @@ function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<4;k++){var c="
 function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b></span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
 
 /* ---------- Telefon: tryb dowolny ---------- */
-function freePlayer(Q,TIME,openStart){
- var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null;
+function freePlayer(Q,TIME,openStart,change){
+ var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
  function intro(){show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
  function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("free",v).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
@@ -111,10 +111,12 @@ function freePlayer(Q,TIME,openStart){
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
  function send(){post({type:"result",name:name,pts:pts,good:good,tok:tok()})}
  function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':'Wracamy do prezentacji')+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
- function ask(){left=TIME;t0=Date.now();var q=Q[i];show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1}));
-  Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){pick(+b.getAttribute("data-i"))}});
-  clearInterval(tm);tm=setInterval(function(){left=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000));var e=document.getElementById("tm");if(e)e.textContent=left+" s";if(left<=0)pick(-1)},250)}
- function pick(k){clearInterval(tm);var q=Q[i],el=(Date.now()-t0)/1000,ok=k===q.c,gain=ok?500+Math.round(500*Math.max(0,1-el/TIME)):0;if(ok)good++;pts+=gain;
+ function ask(){left=TIME;t0=Date.now();var q=Q[i];show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1})+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
+  sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
+  Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
+  if(okb)okb.onclick=function(){pick(sel,selT/1000)};
+  clearInterval(tm);tm=setInterval(function(){left=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000));var e=document.getElementById("tm");if(e)e.textContent=left+" s";if(left<=0){if(sel>=0)pick(sel,selT/1000);else pick(-1)}},250)}
+ function pick(k,elp){clearInterval(tm);var q=Q[i],el=elp!==undefined?elp:(Date.now()-t0)/1000,ok=k===q.c,gain=ok?500+Math.round(500*Math.max(0,1-el/TIME)):0;if(ok)good++;pts+=gain;
   var dim=[1,1,1,1];dim[q.c]=0;
   show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{dim:dim,pick:k}));
   app.querySelector(".wrap").insertAdjacentHTML("beforeend",'<div class="msg">'+(k<0?'<span class="bad">Czas minął.</span>':ok?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>')+' +'+gain+' pkt, razem '+pts+' pkt.</div><p><button class="btn" id="nx" style="margin-top:20px">'+(i+1>=Q.length?"Zobacz wynik":"Dalej")+'</button></p>');
@@ -133,21 +135,21 @@ function livePlayer(){
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
   if(!st){show('<p class="sub">Łączenie…</p>');return}
-  var a=ans[key()],sig=[st.phase,st.i,st.game,a,st.me&&st.me.pts].join("|");if(sig===lastSig)return;lastSig=sig;
+  var a=ans[key()],sig=[st.phase,st.i,st.game,a,st.change,st.me&&st.me.pts].join("|");if(sig===lastSig)return;lastSig=sig;
   var h="",q=st.q;
   if(st.phase==="lobby")h='<p class="eyebrow">Jesteś w grze</p><h1 class="big">Cześć, '+esc(name)+'!</h1><div class="msg">Czekamy na start. Patrz na ekran główny.</div>';
   else if(st.phase==="question"){var over=remaining()<=0;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><div class="timer" id="tm">'+remaining()+' s</div>';
-   if(st.phone==="buttons"){h+='<div class="btns">';for(var k=0;k<4;k++)h+='<button class="bigbtn t'+k+(a===k?" pick":"")+'" data-i="'+k+'"'+((a!==undefined||over)?" disabled":"")+'>'+SYM[k]+'</button>';h+="</div>"}
-   else h+='<h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1,off:(a!==undefined||over),pick:a});
-   if(a!==undefined)h+='<div class="msg">Odpowiedź zapisana. Czekamy na pozostałych.</div>'}
+   if(st.phone==="buttons"){h+='<div class="btns">';for(var k=0;k<4;k++)h+='<button class="bigbtn t'+k+(a===k?" pick":"")+'" data-i="'+k+'"'+(((a!==undefined&&!st.change)||over)?" disabled":"")+'>'+SYM[k]+'</button>';h+="</div>"}
+   else h+='<h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1,off:((a!==undefined&&!st.change)||over),pick:a});
+   if(a!==undefined)h+='<div class="msg">Odpowiedź zapisana.'+(st.change?' Możesz ją jeszcze zmienić do końca czasu, ale kosztuje to punkty.':' Czekamy na pozostałych.')+'</div>'}
   else if(st.phase==="reveal"){var l=st.last,good=l&&l.ok;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">Brak odpowiedzi.</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+LET[q.c]+'. '+esc(q.o[q.c])+'</b>'+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'}
   else if(st.phase==="ranking")h='<p class="eyebrow">Ranking</p><h1 class="big">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of:'Ranking')+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt. ':'')+'Sprawdź ranking na ekranie głównym.</div>';
   else h='<p class="eyebrow">Koniec quizu</p><h1 class="big">'+(st.me?'Twój wynik: '+st.me.pts+' pkt':'Koniec quizu')+'</h1><div class="msg">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Dziękujemy za grę!</div>';
   show(h);
   Array.prototype.forEach.call(document.querySelectorAll("[data-i]"),function(b){b.onclick=function(){answer(+b.getAttribute("data-i"))}})}
- function answer(k){if(!st||st.phase!=="question"||ans[key()]!==undefined||remaining()<=0)return;ans[key()]=k;saveAns();post({type:"answer",name:name,i:st.i,choice:k,ms:Date.now()+off-st.startedAt});lastSig="";draw()}
+ function answer(k){if(!st||st.phase!=="question"||remaining()<=0)return;if(ans[key()]!==undefined&&(!st.change||ans[key()]===k))return;ans[key()]=k;saveAns();post({type:"answer",name:name,i:st.i,choice:k,ms:Date.now()+off-st.startedAt});lastSig="";draw()}
  function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){off=d.now-Date.now();st=d;draw()}).catch(function(){})}
  setInterval(function(){var e=document.getElementById("tm");if(e&&st&&st.phase==="question"){e.textContent=remaining()+" s";if(remaining()<=0){lastSig="";draw()}}},300);
  load();
@@ -193,7 +195,7 @@ function tvPage(){
 
 /* ---------- Grand Prix (wiele rund, punkty się kumulują) ---------- */
 function gpPage(){
- var name=ls("gpn"),Q=[],TIME=20,round=0,ch=[],ms=[],t0=0,tm=null,i=0;
+ var name=ls("gpn"),Q=[],TIME=20,round=0,ch=[],ms=[],t0=0,tm=null,i=0,change=false,sel=-1,selT=0;
  function when(t){try{return new Date(t).toLocaleString("pl-PL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
  function board(d){if(!d.rank||!d.rank.length)return"";var rows=d.rank.slice(0,10).map(function(r){return{name:r.name,pts:r.total}});var mx=rows[0].pts||1,me=d.me?'<div class="msg">Twoje miejsce: <b>'+d.me.place+'</b> z '+d.me.of+', razem <b>'+d.me.total+'</b> pkt (rozegrane rundy: '+d.me.rounds+').</div>':"";return'<h2 style="margin-top:30px">Klasyfikacja generalna</h2>'+me+rankHtml(rows,10,mx)}
  function home(){show('<p class="sub">Ładowanie…</p>');get("action=gp&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){
@@ -210,11 +212,13 @@ function gpPage(){
  function begin(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;
   claim("gp",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty przez inne urządzenie. Wybierz inny.</div>');return}
    name=v;ls("gpn",name);
-   get("action=gpquestions").then(function(d){if(!d.ok||!d.questions||!d.questions.length){home();return}Q=d.questions;TIME=d.time||20;round=d.round;i=0;ch=[];ms=[];ask()}).catch(function(){err(home)})})}
- function ask(){var q=Q[i];t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1}));
-  Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){pick(+b.getAttribute("data-i"))}});
-  clearInterval(tm);tm=setInterval(function(){var l=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000)),e=document.getElementById("tm");if(e)e.textContent=l+" s";if(l<=0)pick(-1)},250)}
- function pick(k){clearInterval(tm);ch[i]=k;ms[i]=k<0?TIME*1000:Date.now()-t0;var q=Q[i];
+   get("action=gpquestions").then(function(d){if(!d.ok||!d.questions||!d.questions.length){home();return}Q=d.questions;TIME=d.time||20;change=!!d.change;round=d.round;i=0;ch=[];ms=[];ask()}).catch(function(){err(home)})})}
+ function ask(){var q=Q[i];t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{btn:1})+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
+  sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
+  Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
+  if(okb)okb.onclick=function(){pick(sel,selT)};
+  clearInterval(tm);tm=setInterval(function(){var l=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000)),e=document.getElementById("tm");if(e)e.textContent=l+" s";if(l<=0){if(sel>=0)pick(sel,selT);else pick(-1)}},250)}
+ function pick(k,msv){clearInterval(tm);ch[i]=k;ms[i]=k<0?TIME*1000:(msv!==undefined?msv:Date.now()-t0);var q=Q[i];
   show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{pick:k,dim:[1,1,1,1].map(function(x,j){return j===k?0:1})}));
   setTimeout(function(){i++;if(i>=Q.length)send();else ask()},600)}
  function send(){show('<p class="sub">Zapisuję wynik…</p>');
@@ -234,7 +238,7 @@ function boot(){
   if(c.mode==="live"){livePlayer();return}
   get("action=questions").then(function(d){
    if(!d.questions||!d.questions.length){show('<p class="eyebrow">Quiz żeglarski</p><h1 class="big">Brak pytań</h1>');return}
-   freePlayer(d.questions,d.time||20,Number(d.open)||0)}).catch(function(){err(boot)})
+   freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change)}).catch(function(){err(boot)})
  }).catch(function(){err(boot)})}
 boot();
 </script>

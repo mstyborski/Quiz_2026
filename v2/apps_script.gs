@@ -46,6 +46,7 @@ function cfg_() {
     phone: String(c['Telefon w trybie na żywo pokazuje'] || '').indexOf('Tylko') === 0 ? 'buttons' : 'full',
     open: (open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
     pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
+    change: c['Zmiana odpowiedzi w czasie pytania'] === 'Tak',
     gp: c['Grand Prix'] === 'Włączone',
     gpName: String(c['Nazwa sezonu Grand Prix'] || 'Grand Prix'),
     gpN: Number(c['Liczba pytań w rundzie']) || 5,
@@ -93,7 +94,15 @@ function setState_(s) {
 function liveRows_(game) {
   var s = sh_(LIVE), last = s.getLastRow();
   if (last < 2) return [];
-  return s.getRange(2, 1, last - 1, 8).getValues().filter(function (r) { return r[1] === game; });
+  var rows = s.getRange(2, 1, last - 1, 8).getValues().filter(function (r) { return r[1] === game; });
+  // przy zmianie odpowiedzi liczy się ostatni wpis gracza dla danego pytania
+  var seen = {}, out = [];
+  rows.forEach(function (r) {
+    if (Number(r[3]) < 0) { out.push(r); return; }
+    var k = String(r[2]) + '|' + r[3];
+    if (seen[k] === undefined) { seen[k] = out.length; out.push(r); } else out[seen[k]] = r;
+  });
+  return out;
 }
 function ranking_(game) {
   var cache = CacheService.getScriptCache(), hit = cache.get('rk');
@@ -124,7 +133,7 @@ function freeRanking_() {
 
 function stateOut_(p) {
   var c = cfg_(), st = getState_(), out = {
-    mode: c.mode, phone: c.phone, time: c.time, now: Date.now(),
+    mode: c.mode, phone: c.phone, time: c.time, change: c.change, now: Date.now(),
     game: st.game, phase: st.phase, i: st.i, n: st.ids.length, startedAt: st.startedAt
   };
   if (st.i >= 0 && st.i < st.ids.length && (st.phase === 'question' || st.phase === 'reveal' || st.phase === 'ranking')) {
@@ -247,7 +256,7 @@ function gpPublic_(c, name) {
     rk = gpRanking_(c).slice(0, 30).map(function (p) { return { name: p.name, key: p.key, total: p.total, rounds: p.rounds }; });
     cache.put('gprank', JSON.stringify(rk), 5);
   }
-  var out = { on: c.gp, name: c.gpName, best: c.gpBest, limit: c.gpLimit, time: c.time, now: Date.now(), rank: rk.slice(0, 20) };
+  var out = { on: c.gp, name: c.gpName, change: c.change, best: c.gpBest, limit: c.gpLimit, time: c.time, now: Date.now(), rank: rk.slice(0, 20) };
   var r = openRound_(), nx = nextRound_();
   if (c.gp && r) {
     out.round = { n: r.n, end: r.end, start: r.start, count: roundQuestions_(r, c).length };
@@ -265,7 +274,7 @@ function gpQuestions_(c, p) {
   var r = openRound_();
   if (!c.gp || !r) return { ok: 0, closed: 1 };
   var qs = roundQuestions_(r, c);
-  return { ok: 1, round: r.n, end: r.end, time: c.time,
+  return { ok: 1, round: r.n, end: r.end, time: c.time, change: c.change,
     questions: qs.map(function (q) { return { id: q.id, q: q.q, o: q.o, cat: q.cat }; }) };
 }
 
@@ -343,9 +352,9 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category });
+  if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change });
   if (action === 'questions') {
-    return json_({ time: c.time, open: c.open, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
+    return json_({ time: c.time, open: c.open, change: c.change, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
   if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
@@ -382,9 +391,9 @@ function doPost(e) {
     var i = Number(d.i), choice = Number(d.choice), now = Date.now();
     if (st.phase !== 'question' || i !== st.i) return json_({ ok: 0, late: 1 });
     if (now - st.startedAt > (c.time * 1000) + 2000) return json_({ ok: 0, late: 1 });
-    var key = 'a|' + st.game + '|' + name + '|' + i;
-    if (cache.get(key)) return json_({ ok: 0, dup: 1 });
-    cache.put(key, '1', 21600);
+    var key = 'a|' + st.game + '|' + name + '|' + i, prev = cache.get(key);
+    if (prev !== null && (!c.change || Number(prev) === choice)) return json_({ ok: 0, dup: 1 });
+    cache.put(key, String(choice), 21600);
     var q = questionById_(st.ids[i]), ok = q && q.c === choice ? 1 : 0;
     var ms = Math.min(c.time * 1000, Math.max(Number(d.ms) || 0, now - st.startedAt - 2000, 0));
     var pts = ok ? 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))) : 0;
