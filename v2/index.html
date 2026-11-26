@@ -102,6 +102,8 @@ function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encod
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
 function qr(el,size){if(el&&window.QRCode)new QRCode(el,{text:pageUrl(),width:size,height:size,correctLevel:QRCode.CorrectLevel.M})}
 function err(retry){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak połączenia</h1><div class="msg">Nie udało się pobrać quizu. Sprawdź internet i spróbuj ponownie.</div><p><button class="btn" id="rt">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=retry}
+function fmtWhen(t){try{return new Date(t).toLocaleString("pl-PL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+function closedScreen(w){var m=w.status==="before"?"Gra rusza: "+fmtWhen(w.from)+(w.to?" i trwa do "+fmtWhen(w.to):"")+".":"Ta runda gry już się zakończyła"+(w.to?" ("+fmtWhen(w.to)+")":"")+".";show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">'+(w.status==="before"?"Jeszcze nie teraz":"Gra zamknięta")+'</h1><div class="msg">'+m+'</div>')}
 var AU=null;
 function stopAudio(){if(AU){try{AU.pause()}catch(e){}AU=null}}
 function mediaHtml(q){return q&&q.img?'<img class="qimg" src="'+esc(q.img)+'" alt="">':""}
@@ -114,7 +116,7 @@ function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var
 function freePlayer(Q,TIME,openStart,change){
  var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
- function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
+ function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
  function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("free",v).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
@@ -246,6 +248,7 @@ function boot(){
  show('<p class="sub">Ładowanie quizu…</p>');
  get("action=config").then(function(c){setT(c);
   if(c.mode==="live"){livePlayer();return}
+  if(c.win&&c.win.status!=="open"){closedScreen(c.win);return}
   get("action=questions").then(function(d){
    if(!d.questions||!d.questions.length){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak pytań</h1>');return}
    freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change)}).catch(function(){err(boot)})

@@ -48,6 +48,8 @@ function cfg_() {
     pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
     change: c['Zmiana odpowiedzi w czasie pytania'] === 'Tak',
     folder: (function (v) { v = String(v || '').trim(); var m = v.match(/folders\/([\w-]+)/); return m ? m[1] : v; })(c['Folder ze zdjęciami i nagraniami (link lub ID)']),
+    freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
+    freeTo: toDate_(c['Tryb dowolny: otwarty do']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
     sub: c.hasOwnProperty('Podtytuł (np. nazwa wydarzenia)') ? String(c['Podtytuł (np. nazwa wydarzenia)']).trim() : 'Podsumowanie Sezonu 2026',
     gp: c['Grand Prix'] === 'Włączone',
@@ -140,6 +142,13 @@ function mediaFor_(q, c) {
   if (!out.img && !out.audio && !out.err) out.err = 'Nie znaleziono pliku "' + src + '" w folderze (sprawdź nazwę i pole Folder w Sterowaniu).';
   if ((out.img || out.audio) && !out.warn) cache.put(ck, JSON.stringify(out), 21600);
   return out;
+}
+
+// Okno czasowe trybu dowolnego: 'open' | 'before' | 'after' (puste daty = zawsze otwarte)
+function freeWindow_(c, graceMs) {
+  var now = Date.now(), a = c.freeFrom ? c.freeFrom.getTime() : 0, b = c.freeTo ? c.freeTo.getTime() : 0;
+  var status = (a && now < a) ? 'before' : ((b && now > b + (graceMs || 0)) ? 'after' : 'open');
+  return { status: status, from: a, to: b };
 }
 
 function json_(o) {
@@ -448,9 +457,9 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, title: c.title, sub: c.sub });
+  if (action === 'config') return json_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, title: c.title, sub: c.sub });
   if (action === 'questions') {
-    return json_({ time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) });
+    return json_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
   if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
@@ -467,6 +476,7 @@ function doGet(e) {
 function doPost(e) {
   var d = JSON.parse(e.postData.contents), type = d.type || 'result', c = cfg_(), cache = CacheService.getScriptCache();
   if (type === 'result') {                                                   // wynik w trybie dowolnym
+    if (freeWindow_(c, 300000).status !== 'open') return json_({ ok: 0, closed: 1 });
     if (d.tok && !claim_('free', String(d.name).slice(0, 20), d.tok).ok) return json_({ ok: 0, taken: 1 });
     sh_('Odpowiedzi').appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good)]);
     return json_({ ok: 1 });
