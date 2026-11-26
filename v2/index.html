@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quiz żeglarski – Podsumowanie Sezonu 2026</title>
 <style>
-:root{--bg:#0F2A43;--card:#17395A;--text:#F4F1EA;--muted:#C9D6E2;--accent:#F09A5E;--btn:#E8742B;--btntext:#0F2A43;--border:#4A6A8A;--bar:#2C5C8A;--hostbar:#0b1e31;--ok:#6FD08C;--bad:#FF9A8A}
+:root{--bg:#0F2A43;--card:#17395A;--text:#F4F1EA;--muted:#C9D6E2;--accent:#F09A5E;--btn:#E8742B;--btntext:#0F2A43;--border:#4A6A8A;--bar:#2C5C8A;--hostbar:#0b1e31;--ok:#6FD08C;--bad:#FF9A8A;--pick:#FFFFFF}
 .logo{display:block;max-height:60px;max-width:60%;margin:0 0 14px}.host .logo{max-height:110px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;min-height:100vh}
@@ -62,12 +62,12 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .host .tile .sym{left:32px;font-size:60px}
 .tile .cnt{position:absolute;right:22px;top:50%;transform:translateY(-50%);font-size:34px}
 .t0{background:#D6404A}.t1{background:#2F73D9}.t2{background:#C99410;color:#101010}.t3{background:#2E9A57}
-.tile.dim{opacity:.35}.tile.pick{outline:5px solid #fff}
+.tile.dim{opacity:.35}.tile.pick{outline:5px solid var(--pick);outline-offset:3px}.tile.pick:after{content:'✓';position:absolute;right:16px;top:8px;font-size:22px;color:#fff;background:var(--pick);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;outline:2px solid #fff}
 .tile:disabled{cursor:default}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
 .bigbtn{border:0;border-radius:20px;color:#fff;font-size:72px;font-weight:700;min-height:34vh;cursor:pointer}
 .bigbtn:disabled{opacity:.45}
-.bigbtn.pick{outline:6px solid #fff}
+.bigbtn.pick{outline:6px solid var(--pick);outline-offset:3px}
 .bar2{height:14px;background:var(--card);border-radius:8px;margin:14px 0;overflow:hidden}
 .bar2 i{display:block;height:100%;background:var(--btn)}
 .rk{display:grid;grid-template-columns:60px 1fr 140px;gap:16px;align-items:center;margin-top:12px;font-size:22px}
@@ -92,14 +92,14 @@ var SCRIPT_URL="https://script.google.com/macros/s/AKfycbz4e9oBETSZ1E2W5HgDCMPa7
 var QT="Quiz",QS="";
 function QSUB(){return QS?" · "+QS:""}
 var LOGO="",IDL=null,BRK="Za chwilę wracamy do gry…";
-var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"#4A5B6C",accent:"#C2571A",btn:"#C2571A",btntext:"#FFFFFF",border:"#B8C2CC",bar:"#BFD4E8",hostbar:"#E4E0D6",ok:"#1E7B46",bad:"#B3261E"},
+var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"#4A5B6C",accent:"#C2571A",btn:"#C2571A",btntext:"#FFFFFF",border:"#B8C2CC",bar:"#BFD4E8",hostbar:"#E4E0D6",ok:"#1E7B46",bad:"#B3261E",pick:"#111111"},
 "Grafit i limonka":{bg:"#1C1F22",card:"#2A2E33",text:"#F2F4F5",muted:"#B9C0C6",accent:"#C6F135",btn:"#C6F135",btntext:"#1C1F22",border:"#555C63",bar:"#4A5A2A",hostbar:"#111315",ok:"#7BE08F",bad:"#FF9A8A"},
 "Bordo i złoto":{bg:"#3A0F1E",card:"#541A2D",text:"#F8EFE0",muted:"#E3CFC0",accent:"#E7B84B",btn:"#E7B84B",btntext:"#3A0F1E",border:"#8A4A5E",bar:"#7A2A45",hostbar:"#260A14",ok:"#8EDC9E",bad:"#FFA79A"},
 "Zielony las":{bg:"#10301F",card:"#1A4A31",text:"#F1F4EA",muted:"#CADBCB",accent:"#F2B35E",btn:"#F2B35E",btntext:"#10301F",border:"#4F7A5E",bar:"#2E6B4A",hostbar:"#0A2014",ok:"#8EE0A0",bad:"#FFA79A"},
 "Fiolet":{bg:"#24143F",card:"#36215C",text:"#F5F0FA",muted:"#D5C9E6",accent:"#FF9FD0",btn:"#FF9FD0",btntext:"#24143F",border:"#6F5A99",bar:"#563A8C",hostbar:"#170C2B",ok:"#8EE0A8",bad:"#FFA79A"},
 "Granat i czerwień":{bg:"#0B1F3A",card:"#14325A",text:"#F4F4F6",muted:"#C7D2E0",accent:"#FF6B6B",btn:"#E63946",btntext:"#FFFFFF",border:"#476A96",bar:"#2B5A94",hostbar:"#07152A",ok:"#6FD08C",bad:"#FFB3A8"}};
 var palKey="";
-function applyPal(n){if(n===palKey)return;palKey=n;var base=PAL["Morska"],p=PAL[n]||base,r=document.documentElement.style,k;var all={bg:"#0F2A43",card:"#17395A",text:"#F4F1EA",muted:"#C9D6E2",accent:"#F09A5E",btn:"#E8742B",btntext:"#0F2A43",border:"#4A6A8A",bar:"#2C5C8A",hostbar:"#0b1e31",ok:"#6FD08C",bad:"#FF9A8A"};for(k in all)r.setProperty("--"+k,p[k]||all[k])}
+function applyPal(n){if(n===palKey)return;palKey=n;var base=PAL["Morska"],p=PAL[n]||base,r=document.documentElement.style,k;var all={bg:"#0F2A43",card:"#17395A",text:"#F4F1EA",muted:"#C9D6E2",accent:"#F09A5E",btn:"#E8742B",btntext:"#0F2A43",border:"#4A6A8A",bar:"#2C5C8A",hostbar:"#0b1e31",ok:"#6FD08C",bad:"#FF9A8A",pick:"#FFFFFF"};for(k in all)r.setProperty("--"+k,p[k]||all[k])}
 function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}if(d){LOGO=d.logo||"";IDL=d.idl||null;if(d.brk)BRK=d.brk;applyPal(d.palette||"")}}
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
