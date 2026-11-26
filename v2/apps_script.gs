@@ -115,13 +115,19 @@ function mediaFor_(q, c) {
     if (id) out.audio = 'https://drive.google.com/uc?export=download&id=' + id;
     else if (/^https?:/i.test(src)) out.audio = src;
     else {
-      try {
-        var r = JSON.parse(UrlFetchApp.fetch('https://itunes.apple.com/search?media=music&entity=song&limit=5&country=PL&term=' + encodeURIComponent(src), { muteHttpExceptions: true }).getContentText());
-        var t = (r.results || []).filter(function (x) { return x.previewUrl; })[0];
-        if (t) { out.audio = t.previewUrl; out.auto = t.artistName + ' – ' + t.trackName; }
-      } catch (e) {}
+      var term = src.replace(/[–—\-]+/g, ' ').replace(/\s+/g, ' ').trim(), cs = ['PL', 'US'];
+      for (var ci = 0; ci < cs.length && !out.audio; ci++) {
+        try {
+          var r = JSON.parse(UrlFetchApp.fetch('https://itunes.apple.com/search?media=music&entity=song&limit=10&country=' + cs[ci] + '&term=' + encodeURIComponent(term), { muteHttpExceptions: true }).getContentText());
+          var t = (r.results || []).filter(function (x) { return x.previewUrl; })[0];
+          if (t) { out.audio = t.previewUrl; out.auto = t.artistName + ' – ' + t.trackName; }
+          else out.err = 'iTunes: brak wyników dla "' + term + '"';
+        } catch (e) { out.err = String(e); }
+      }
+      if (out.audio) delete out.err;
     }
   }
+  if (!out.img && !out.audio && !out.err) out.err = 'Nie znaleziono pliku "' + src + '" w folderze (sprawdź nazwę i pole Folder w Sterowaniu).';
   if (out.img || out.audio) cache.put(ck, JSON.stringify(out), 21600);
   return out;
 }
@@ -362,9 +368,20 @@ function gpSubmit_(c, p) {
 // ----- Menu w arkuszu: archiwizacja sezonu i zwalnianie pseudonimów -----
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Quiz')
+    .addItem('Sprawdź pytania ze zdjęciem i muzyką', 'checkMedia')
     .addItem('Zakończ sezon Grand Prix i zarchiwizuj', 'archiveGp')
     .addItem('Usuń gracza / zwolnij pseudonim…', 'releaseName')
     .addToUi();
+}
+function checkMedia() {
+  var c = cfg_(), lines = [];
+  CacheService.getScriptCache().removeAll(['fm']);
+  questions_('Wszystkie').forEach(function (q) {
+    if (q.typ === 'Tekst' || !q.src) return;
+    var m = mediaFor_(q, c);
+    lines.push((m.img || m.audio ? 'OK   ' : 'BŁĄD ') + q.typ + ' · ' + q.src + (m.auto ? ' → ' + m.auto : '') + (m.err ? ' · ' + m.err : ''));
+  });
+  SpreadsheetApp.getUi().alert(lines.length ? lines.join('\n') : 'Brak aktywnych pytań ze zdjęciem lub muzyką (kolumny Typ i Źródło w zakładce Pytania).');
 }
 function archiveGp() {
   var ui = SpreadsheetApp.getUi(), c = cfg_();
