@@ -81,6 +81,7 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .hostbar .btn{font-size:17px;padding:12px 18px}
 .qimg{display:block;max-width:100%;max-height:46vh;margin:16px auto;border-radius:14px;object-fit:contain}
 .corner{position:fixed;right:20px;top:20px;background:#fff;padding:8px;border-radius:10px}
+.katex{font-size:1.05em}.tile .katex{color:inherit;font-size:1.3em}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Inter:wght@400;600&display=swap">
 </head>
@@ -105,7 +106,12 @@ function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" 
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
-function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>'}
+function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>';if(/\$|\\\(|\\\[/.test(h))tex(app)}
+/* LaTeX: $...$, $$...$$, \(...\), \[...\] przez KaTeX (ładowany tylko gdy potrzebny) */
+var KX="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/",kxP=null;
+function kxLoad(){if(kxP)return kxP;kxP=new Promise(function(ok,no){var l=document.createElement("link");l.rel="stylesheet";l.href=KX+"katex.min.css";document.head.appendChild(l);
+ var s=document.createElement("script");s.src=KX+"katex.min.js";s.onload=function(){var t=document.createElement("script");t.src=KX+"contrib/auto-render.min.js";t.onload=ok;t.onerror=no;document.head.appendChild(t)};s.onerror=no;document.head.appendChild(s)});return kxP}
+function tex(el){kxLoad().then(function(){if(window.renderMathInElement)renderMathInElement(el,{delimiters:[{left:"$$",right:"$$",display:true},{left:"\\[",right:"\\]",display:true},{left:"$",right:"$",display:false},{left:"\\(",right:"\\)",display:false}],throwOnError:false,ignoredTags:["script","noscript","style","textarea","input"]})}).catch(function(){})}
 function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
