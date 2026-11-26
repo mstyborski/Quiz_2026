@@ -101,6 +101,15 @@ function folderMap_(c) {
   return m;
 }
 
+// Telefony nie są zalogowane na konto właściciela: plik musi być dostępny dla każdego z linkiem.
+function ensurePublic_(id) {
+  try {
+    var f = DriveApp.getFileById(id), a = f.getSharingAccess();
+    if (a !== DriveApp.Access.ANYONE_WITH_LINK && a !== DriveApp.Access.ANYONE) f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return '';
+  } catch (e) { return 'Nie udało się udostępnić pliku publicznie: ' + e; }
+}
+
 // Adres zdjęcia / dźwięku dla pytania; fragmenty muzyki szuka w iTunes. Wynik w cache 6 h.
 function mediaFor_(q, c) {
   if (!q.src || q.typ === 'Tekst') return {};
@@ -108,6 +117,7 @@ function mediaFor_(q, c) {
   if (hit) return JSON.parse(hit);
   var out = {}, src = q.src, id = folderMap_(c)[src.toLowerCase()] || null;
   if (!id) { var mm = src.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/); if (mm) id = mm[1] || mm[2]; }
+  if (id) { var w = ensurePublic_(id); if (w) out.warn = w; }
   if (q.typ === 'Zdjęcie') {
     if (id) out.img = 'https://lh3.googleusercontent.com/d/' + id + '=w1600';
     else if (/^https?:/i.test(src)) out.img = src;
@@ -128,7 +138,7 @@ function mediaFor_(q, c) {
     }
   }
   if (!out.img && !out.audio && !out.err) out.err = 'Nie znaleziono pliku "' + src + '" w folderze (sprawdź nazwę i pole Folder w Sterowaniu).';
-  if (out.img || out.audio) cache.put(ck, JSON.stringify(out), 21600);
+  if ((out.img || out.audio) && !out.warn) cache.put(ck, JSON.stringify(out), 21600);
   return out;
 }
 
@@ -385,7 +395,7 @@ function checkMedia() {
   questions_('Wszystkie').forEach(function (q) {
     if (q.typ === 'Tekst' || !q.src) return;
     var m = mediaFor_(q, c);
-    lines.push((m.img || m.audio ? 'OK   ' : 'BŁĄD ') + q.typ + ' · ' + q.src + (m.auto ? ' → ' + m.auto : '') + (m.err ? ' · ' + m.err : ''));
+    lines.push((m.img || m.audio ? 'OK   ' : 'BŁĄD ') + q.typ + ' · ' + q.src + (m.auto ? ' → ' + m.auto : '') + (m.err ? ' · ' + m.err : '') + (m.warn ? ' · UWAGA: ' + m.warn : ''));
   });
   SpreadsheetApp.getUi().alert(lines.length ? lines.join('\n') : 'Brak aktywnych pytań ze zdjęciem lub muzyką (kolumny Typ i Źródło w zakładce Pytania).');
 }
