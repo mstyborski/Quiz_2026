@@ -313,7 +313,7 @@ function gpSubmit_(c, p) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Quiz')
     .addItem('Zakończ sezon Grand Prix i zarchiwizuj', 'archiveGp')
-    .addItem('Zwolnij pseudonim…', 'releaseName')
+    .addItem('Usuń gracza / zwolnij pseudonim…', 'releaseName')
     .addToUi();
 }
 function archiveGp() {
@@ -337,15 +337,28 @@ function archiveCore_(c) {
   CacheService.getScriptCache().remove('gprank');
 }
 function releaseName() {
-  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Jaki pseudonim zwolnić (Grand Prix i bieżące spotkanie)?');
+  var ui = SpreadsheetApp.getUi(), r = ui.prompt('Jaki pseudonim usunąć (rezerwacja oraz gracz z bieżącej gry na żywo)?');
   if (r.getSelectedButton() !== ui.Button.OK) return;
-  ui.alert(releaseCore_(r.getResponseText()) + ' rezerwacji usunięto.');
+  ui.alert('Usunięto wpisów: ' + releaseCore_(r.getResponseText()));
 }
 function releaseCore_(name) {
-  var key = nkey_(name), n = sh_(NAMES), cnt = 0;
-  if (!n || n.getLastRow() < 2) return 0;
-  var rows = n.getRange(2, 1, n.getLastRow() - 1, 5).getValues();
-  for (var i = rows.length - 1; i >= 0; i--) if (String(rows[i][1]) === key) { n.deleteRow(i + 2); cnt++; }
+  var key = nkey_(name), n = sh_(NAMES), cnt = 0, i, rows;
+  if (n && n.getLastRow() >= 2) {
+    rows = n.getRange(2, 1, n.getLastRow() - 1, 5).getValues();
+    for (i = rows.length - 1; i >= 0; i--) if (String(rows[i][1]) === key) { n.deleteRow(i + 2); cnt++; }
+  }
+  // usuń też gracza z bieżącej gry na żywo (lista w lobby, punkty, odpowiedzi)
+  var game = getState_().game, s = sh_(LIVE), cache = CacheService.getScriptCache();
+  if (s && s.getLastRow() >= 2) {
+    rows = s.getRange(2, 1, s.getLastRow() - 1, 8).getValues();
+    for (i = rows.length - 1; i >= 0; i--) {
+      if (rows[i][1] === game && nkey_(rows[i][2]) === key) {
+        cache.remove('j|' + game + '|' + String(rows[i][2]));
+        s.deleteRow(i + 2); cnt++;
+      }
+    }
+  }
+  cache.removeAll(['rk', 'st', 'stfull', 'gprank']);
   return cnt;
 }
 
