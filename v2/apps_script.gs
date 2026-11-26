@@ -38,7 +38,7 @@ function claimCore_(scope, name, tok, uid) {
 function sh_(name) { return SpreadsheetApp.getActive().getSheetByName(name); }
 
 function cfg_() {
-  var rows = sh_('Sterowanie').getRange('A2:B40').getValues(), c = {};
+  var rows = sh_('Sterowanie').getRange('A2:B80').getValues(), c = {};
   rows.forEach(function (r) { if (r[0] !== '') c[String(r[0]).trim()] = r[1]; });
   var open = c['Odblokowane pytania (tryb dowolny)'];
   return {
