@@ -9,26 +9,28 @@ function nkey_(n) { return String(n).trim().toLowerCase().replace(/\s+/g, ' '); 
 
 // Rezerwacja pseudonimu w danej grze ('free' w trybie dowolnym, id gry na żywo).
 // Ten sam kod urządzenia może wracać; inny kod dostaje taken=1.
-function claim_(scope, name, tok) {
+function claim_(scope, name, tok, uid) {
   var lock = LockService.getScriptLock(); lock.waitLock(8000);
-  try { return claimCore_(scope, name, tok); } finally { lock.releaseLock(); }
+  try { return claimCore_(scope, name, tok, uid); } finally { lock.releaseLock(); }
 }
-function claimCore_(scope, name, tok) {
+function claimCore_(scope, name, tok, uid) {
   var key = nkey_(name);
   if (!key) return { ok: 0 };
   {
     var s = sh_(NAMES);
-    if (!s) { s = SpreadsheetApp.getActive().insertSheet(NAMES); s.appendRow(['Gra', 'Klucz', 'Pseudonim', 'Kod urządzenia', 'Czas']); s.setFrozenRows(1); }
+    if (!s) { s = SpreadsheetApp.getActive().insertSheet(NAMES); s.appendRow(['Gra', 'Klucz', 'Pseudonim', 'Kod urządzenia', 'Czas', 'Dane uczestnika (niewidoczne na ekranie)']); s.setFrozenRows(1); }
     var last = s.getLastRow();
     if (last >= 2) {
       var rows = s.getRange(2, 1, last - 1, 4).getValues();
       for (var i = 0; i < rows.length; i++) {
         if (String(rows[i][0]) === scope && String(rows[i][1]) === key) {
-          return String(rows[i][3]) === String(tok) ? { ok: 1 } : { ok: 0, taken: 1 };
+          if (String(rows[i][3]) !== String(tok)) return { ok: 0, taken: 1 };
+          if (uid) s.getRange(i + 2, 6).setValue(String(uid).slice(0, 60));
+          return { ok: 1 };
         }
       }
     }
-    s.appendRow([scope, key, String(name).trim().slice(0, 20), String(tok), new Date()]);
+    s.appendRow([scope, key, String(name).trim().slice(0, 20), String(tok), new Date(), uid ? String(uid).slice(0, 60) : '']);
     return { ok: 1 };
   }
 }
@@ -44,10 +46,18 @@ function cfg_() {
     category: String(c['Kategoria do gry'] || 'Wszystkie'),
     time: Number(c['Czas na pytanie (s)']) || 20,
     phone: String(c['Telefon w trybie na żywo pokazuje'] || '').indexOf('Tylko') === 0 ? 'buttons' : 'full',
-    open: (open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
+    open: (c['Gra z przerwami'] === 'Nie' || open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
     pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
     change: c['Zmiana odpowiedzi w czasie pytania'] === 'Tak',
     folder: (function (v) { v = String(v || '').trim(); var m = v.match(/folders\/([\w-]+)/); return m ? m[1] : v; })(c['Folder ze zdjęciami i nagraniami (link lub ID)']),
+    nq: (function (v) { var n = Number(v); return (v === '' || v === undefined || isNaN(n) || n <= 0) ? 0 : n; })(c['Liczba pytań w quizie']),
+    breaks: c['Gra z przerwami'] !== 'Nie',
+    breakText: String(c['Tekst na planszy podczas przerwy'] || 'Za chwilę wracamy do gry…'),
+    logo: String(c['Logo (nazwa pliku z folderu lub adres)'] || '').trim(),
+    palette: String(c['Paleta kolorów'] || '').trim(),
+    idOn: c['Dane uczestnika (opcjonalne)'] === 'Włączone',
+    idLabel: String(c['Etykieta pola danych uczestnika'] || 'Imię i nazwisko lub nr indeksu'),
+    idInfo: String(c['Informacja przy polu danych'] || 'Nie wyświetlamy tego na ekranie. Podaj, jeśli chcesz być uwzględniony w nagrodach.'),
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
     freeTo: toDate_(c['Tryb dowolny: otwarty do']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
@@ -151,6 +161,14 @@ function freeWindow_(c, graceMs) {
   return { status: status, from: a, to: b };
 }
 
+// Wspólne dane wyglądu i ustawień dołączane do odpowiedzi
+function withMeta_(o, c) {
+  var lg = c.logo ? (mediaFor_({ typ: 'Zdjęcie', src: c.logo }, c).img || '') : '';
+  o.title = c.title; o.sub = c.sub; o.logo = lg; o.palette = c.palette; o.brk = c.breakText;
+  o.idl = c.idOn ? { label: c.idLabel, info: c.idInfo } : null;
+  return o;
+}
+
 function json_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
@@ -238,7 +256,7 @@ function stateOut_(p) {
       rows.forEach(function (r) { if (Number(r[3]) === st.i && Number(r[4]) >= 0) d[Number(r[4])]++; });
       out.dist = d;
     }
-    if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'final') out.rank = rk.slice(0, 10);
+    if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'break' || st.phase === 'final') out.rank = rk.slice(0, 10);
     if (c.mode === 'free') out.freerank = freeRanking_().slice(0, 10);
   }
   return out;
@@ -388,6 +406,7 @@ function gpSubmit_(c, p) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Quiz')
     .addItem('Sprawdź pytania ze zdjęciem i muzyką', 'checkMedia')
+    .addItem('Zestawienie wyników z danymi uczestników', 'idReport')
     .addItem('Zakończ sezon Grand Prix i zarchiwizuj', 'archiveGp')
     .addItem('Usuń gracza / zwolnij pseudonim…', 'releaseName')
     .addToUi();
@@ -422,11 +441,31 @@ function archiveCore_(c) {
   var a = sh_(GPA); if (a && a.getLastRow() > 1) a.getRange(2, 1, a.getLastRow() - 1, 7).clearContent();
   var n = sh_(NAMES);
   if (n && n.getLastRow() > 1) {
-    var rows = n.getRange(2, 1, n.getLastRow() - 1, 5).getValues();
+    var rows = n.getRange(2, 1, n.getLastRow() - 1, 6).getValues();
     for (var i = rows.length - 1; i >= 0; i--) if (String(rows[i][0]) === 'gp') n.deleteRow(i + 2);
   }
   writeGpSheet_(c);
   CacheService.getScriptCache().remove('gprank');
+}
+// Zestawienie: kto (dane niewidoczne na ekranie) ile zdobył punktów
+function idReport() {
+  var c = cfg_(), n = sh_(NAMES), out = [];
+  if (!n || n.getLastRow() < 2) { SpreadsheetApp.getUi().alert('Brak zarejestrowanych uczestników.'); return; }
+  var free = {}, gp = {}, live = {}, game = getState_().game;
+  freeRanking_().forEach(function (r) { free[nkey_(r.name)] = r; });
+  gpRanking_(c).forEach(function (r) { gp[r.key] = { pts: r.total, good: '' }; });
+  ranking_(game).forEach(function (r) { live[nkey_(r.name)] = r; });
+  n.getRange(2, 1, n.getLastRow() - 1, 6).getValues().forEach(function (r) {
+    var scope = String(r[0]), key = String(r[1]), sc = scope === 'free' ? free[key] : (scope === 'gp' ? gp[key] : (scope === game ? live[key] : null));
+    var mode = scope === 'free' ? 'Dowolny moment' : (scope === 'gp' ? 'Grand Prix' : (scope === game ? 'Na żywo (bieżąca gra)' : 'Na żywo (wcześniejsza gra)'));
+    out.push([mode, String(r[2]), String(r[5] || ''), sc ? (sc.pts !== undefined ? sc.pts : sc.total) : '', sc && sc.good !== undefined ? sc.good : '', r[4]]);
+  });
+  out.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : (Number(b[3]) || 0) - (Number(a[3]) || 0); });
+  var s = sh_('Wyniki imienne') || SpreadsheetApp.getActive().insertSheet('Wyniki imienne');
+  s.getRange(1, 1, 400, 6).clearContent();
+  s.getRange(1, 1, 1, 6).setValues([['Tryb', 'Pseudonim', 'Dane uczestnika', 'Punkty', 'Poprawne', 'Rejestracja']]);
+  if (out.length) s.getRange(2, 1, out.length, 6).setValues(out);
+  SpreadsheetApp.getUi().alert('Zestawienie zapisano w zakładce "Wyniki imienne" (' + out.length + ' wierszy).');
 }
 function releaseName() {
   var ui = SpreadsheetApp.getUi(), r = ui.prompt('Jaki pseudonim usunąć (rezerwacja oraz gracz z bieżącej gry na żywo)?');
@@ -457,18 +496,18 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, title: c.title, sub: c.sub });
+  if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change }, c));
   if (action === 'questions') {
-    return json_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) });
+    return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: questions_(c.category).slice(0, c.nq || 999).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) }, c));
   }
-  if (action === 'state') return json_(stateOut_(p));
-  if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
-  if (action === 'gpquestions') return json_(gpQuestions_(c, p));
+  if (action === 'state') return json_(withMeta_(stateOut_(p), c));
+  if (action === 'gp') return json_(withMeta_(gpPublic_(c, String(p.name || '').slice(0, 20)), c));
+  if (action === 'gpquestions') return json_(withMeta_(gpQuestions_(c, p), c));
   if (action === 'gpsubmit') return json_(gpSubmit_(c, p));
   if (action === 'claim') {
     var scope = p.scope === 'live' ? getState_().game : (p.scope === 'gp' ? 'gp' : 'free');
     if (!p.tok) return json_({ ok: 0 });
-    return json_(claim_(scope, String(p.name || '').slice(0, 20), p.tok));
+    return json_(claim_(scope, String(p.name || '').slice(0, 20), p.tok, p.id));
   }
   return json_({ error: 'unknown action' });
 }
@@ -519,11 +558,13 @@ function host_(d, c) {
       var s = sh_(LIVE); if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 8).clearContent();
       st = { game: 'g' + now, phase: 'lobby', i: -1, ids: [], startedAt: 0 };
     } else if (cmd === 'start') {
-      var ids = questions_(c.category).map(function (q) { return q.id; });
+      var ids = questions_(c.category).slice(0, c.nq || 999).map(function (q) { return q.id; });
       if (!ids.length) return { ok: 0, error: 'brak pytań' };
       st.ids = ids; st.i = 0; st.phase = 'question'; st.startedAt = now;
     } else if (cmd === 'reveal') {
       if (st.phase === 'question') st.phase = 'reveal';
+    } else if (cmd === 'break') {
+      if (st.phase === 'reveal' || st.phase === 'ranking') st.phase = 'break';
     } else if (cmd === 'ranking') {
       if (st.phase === 'reveal') st.phase = 'ranking';
     } else if (cmd === 'next') {

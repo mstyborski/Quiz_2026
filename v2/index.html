@@ -5,52 +5,54 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quiz żeglarski – Podsumowanie Sezonu 2026</title>
 <style>
+:root{--bg:#0F2A43;--card:#17395A;--text:#F4F1EA;--muted:#C9D6E2;--accent:#F09A5E;--btn:#E8742B;--btntext:#0F2A43;--border:#4A6A8A;--bar:#2C5C8A;--hostbar:#0b1e31;--ok:#6FD08C;--bad:#FF9A8A}
+.logo{display:block;max-height:60px;max-width:60%;margin:0 0 14px}.host .logo{max-height:110px}
 *{box-sizing:border-box}
-body{margin:0;background:#0F2A43;color:#F4F1EA;font-family:Inter,Arial,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;min-height:100vh}
 h1,h2,h3{font-family:'Space Grotesk',Arial,sans-serif;margin:0}
 .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 90px}
 .host .wrap{max-width:1500px;padding:40px 56px 100px}
-.eyebrow{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#F09A5E;margin:0 0 10px}
+.eyebrow{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
 .host .eyebrow{font-size:22px}
 .big{font-size:clamp(28px,5vw,56px);line-height:1.1;font-weight:700}
 .host .big{font-size:60px}
-.sub{color:#C9D6E2;font-size:18px;line-height:1.4;margin:12px 0 0}
+.sub{color:var(--muted);font-size:18px;line-height:1.4;margin:12px 0 0}
 .host .sub{font-size:28px}
 button,input{font:inherit}
-.btn{background:#E8742B;color:#0F2A43;border:0;border-radius:12px;padding:14px 22px;font-weight:700;font-size:18px;cursor:pointer}
-.btn.ghost{background:#17395A;color:#F4F1EA}
-input.name{width:100%;padding:16px;border-radius:12px;border:2px solid #4A6A8A;background:#17395A;color:#F4F1EA;font-size:20px;margin:18px 0}
+.btn{background:var(--btn);color:var(--btntext);border:0;border-radius:12px;padding:14px 22px;font-weight:700;font-size:18px;cursor:pointer}
+.btn.ghost{background:var(--card);color:var(--text)}
+input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:20px;margin:18px 0}
 .opts{display:grid;gap:14px;margin-top:26px;grid-template-columns:1fr}
 .host .opts{grid-template-columns:1fr 1fr;gap:22px}
-.opt{position:relative;text-align:left;background:#17395A;color:#F4F1EA;border:3px solid #17395A;border-radius:16px;padding:20px 20px 20px 70px;font-size:20px;line-height:1.3;cursor:pointer;overflow:hidden;min-height:72px}
+.opt{position:relative;text-align:left;background:var(--card);color:var(--text);border:3px solid var(--card);border-radius:16px;padding:20px 20px 20px 70px;font-size:20px;line-height:1.3;cursor:pointer;overflow:hidden;min-height:72px}
 .host .opt{font-size:30px;padding:28px 28px 28px 92px;cursor:default;min-height:110px}
-.opt .l{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:#F4F1EA;color:#0F2A43;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:20px}
+.opt .l{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:var(--text);color:var(--btntext);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:20px}
 .host .opt .l{left:24px;width:52px;height:52px;font-size:26px}
-.opt .bar{position:absolute;left:0;top:0;bottom:0;background:#2C5C8A;opacity:.55;z-index:0;transition:width .4s}
+.opt .bar{position:absolute;left:0;top:0;bottom:0;background:var(--bar);opacity:.55;z-index:0;transition:width .4s}
 .opt .t,.opt .n{position:relative;z-index:1}
 .opt .n{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-weight:700;font-size:26px}
-.opt.good{border-color:#6FD08C;background:#1D5A3A}
-.opt.mine{border-color:#F09A5E}
+.opt.good{border-color:var(--ok);background:#1D5A3A}
+.opt.mine{border-color:var(--accent)}
 .opt.dim{opacity:.55}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.chip{background:#17395A;border-radius:999px;padding:8px 16px;font-size:18px}
+.chip{background:var(--card);border-radius:999px;padding:8px 16px;font-size:18px}
 .host .chip{font-size:26px;padding:10px 22px}
-.timer{font-family:'Space Grotesk',Arial,sans-serif;font-size:56px;font-weight:700;color:#F09A5E}
+.timer{font-family:'Space Grotesk',Arial,sans-serif;font-size:56px;font-weight:700;color:var(--accent)}
 .board{margin-top:24px;display:grid;gap:10px}
-.rowb{display:flex;justify-content:space-between;background:#17395A;border-radius:12px;padding:14px 20px;font-size:20px}
+.rowb{display:flex;justify-content:space-between;background:var(--card);border-radius:12px;padding:14px 20px;font-size:20px}
 .host .rowb{font-size:32px;padding:18px 28px}
-.rowb.me{border:2px solid #F09A5E}
+.rowb.me{border:2px solid var(--accent)}
 .qr{background:#fff;padding:18px;border-radius:16px;display:inline-block}
 .lobby{display:grid;grid-template-columns:auto 1fr;gap:56px;align-items:start;margin-top:30px}
-.ctl{position:fixed;right:14px;bottom:14px;display:flex;gap:8px;background:#0b1e31;padding:8px;border-radius:14px;opacity:.9}
+.ctl{position:fixed;right:14px;bottom:14px;display:flex;gap:8px;background:var(--hostbar);padding:8px;border-radius:14px;opacity:.9}
 .ctl .btn{font-size:15px;padding:10px 14px}
-.msg{background:#17395A;border-radius:16px;padding:24px;font-size:20px;line-height:1.5;margin-top:24px}
+.msg{background:var(--card);border-radius:16px;padding:24px;font-size:20px;line-height:1.5;margin-top:24px}
 .stats{margin-top:28px;display:grid;gap:12px}
 .sb{display:grid;grid-template-columns:230px 1fr 60px;align-items:center;gap:16px;font-size:26px}
-.st{background:#17395A;border-radius:10px;height:34px;overflow:hidden;display:block}
+.st{background:var(--card);border-radius:10px;height:34px;overflow:hidden;display:block}
 .sf{display:block;height:100%}
 .sn{font-weight:700}
-.ok{color:#6FD08C;font-weight:700}.bad{color:#FF9A8A;font-weight:700}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
 
 .tiles{display:grid;gap:14px;margin-top:22px;grid-template-columns:1fr}
 .host .tiles{grid-template-columns:1fr 1fr;gap:22px}
@@ -66,16 +68,16 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid #4A6A8A;b
 .bigbtn{border:0;border-radius:20px;color:#fff;font-size:72px;font-weight:700;min-height:34vh;cursor:pointer}
 .bigbtn:disabled{opacity:.45}
 .bigbtn.pick{outline:6px solid #fff}
-.bar2{height:14px;background:#17395A;border-radius:8px;margin:14px 0;overflow:hidden}
-.bar2 i{display:block;height:100%;background:#E8742B}
+.bar2{height:14px;background:var(--card);border-radius:8px;margin:14px 0;overflow:hidden}
+.bar2 i{display:block;height:100%;background:var(--btn)}
 .rk{display:grid;grid-template-columns:60px 1fr 140px;gap:16px;align-items:center;margin-top:12px;font-size:22px}
 .host .rk{font-size:34px;grid-template-columns:70px 1fr 180px}
-.rk .nm{position:relative;background:#17395A;border-radius:10px;padding:10px 16px;overflow:hidden}
-.rk .nm i{position:absolute;left:0;top:0;bottom:0;background:#2C5C8A;opacity:.7}
+.rk .nm{position:relative;background:var(--card);border-radius:10px;padding:10px 16px;overflow:hidden}
+.rk .nm i{position:absolute;left:0;top:0;bottom:0;background:var(--bar);opacity:.7}
 .rk .nm b{position:relative}
 .rk .pt{font-weight:700;text-align:right}
-.hostbar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;background:#0b1e31;padding:10px 16px;flex-wrap:wrap}
-.hostbar input{width:110px;padding:10px;border-radius:8px;border:2px solid #4A6A8A;background:#17395A;color:#F4F1EA;font-size:16px}
+.hostbar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;background:var(--hostbar);padding:10px 16px;flex-wrap:wrap}
+.hostbar input{width:110px;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:16px}
 .hostbar .btn{font-size:17px;padding:12px 18px}
 .qimg{display:block;max-width:100%;max-height:46vh;margin:16px auto;border-radius:14px;object-fit:contain}
 .corner{position:fixed;right:20px;top:20px;background:#fff;padding:8px;border-radius:10px}
@@ -89,16 +91,27 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid #4A6A8A;b
 var SCRIPT_URL="https://script.google.com/macros/s/AKfycbz4e9oBETSZ1E2W5HgDCMPa7KP2Uzk7VcQupOLNoCw4yFNaVEXits1yqmRA9E-XT5jb/exec";
 var QT="Quiz",QS="";
 function QSUB(){return QS?" · "+QS:""}
-function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}}
+var LOGO="",IDL=null,BRK="Za chwilę wracamy do gry…";
+var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"#4A5B6C",accent:"#C2571A",btn:"#C2571A",btntext:"#FFFFFF",border:"#B8C2CC",bar:"#BFD4E8",hostbar:"#E4E0D6",ok:"#1E7B46",bad:"#B3261E"},
+"Grafit i limonka":{bg:"#1C1F22",card:"#2A2E33",text:"#F2F4F5",muted:"#B9C0C6",accent:"#C6F135",btn:"#C6F135",btntext:"#1C1F22",border:"#555C63",bar:"#4A5A2A",hostbar:"#111315",ok:"#7BE08F",bad:"#FF9A8A"},
+"Bordo i złoto":{bg:"#3A0F1E",card:"#541A2D",text:"#F8EFE0",muted:"#E3CFC0",accent:"#E7B84B",btn:"#E7B84B",btntext:"#3A0F1E",border:"#8A4A5E",bar:"#7A2A45",hostbar:"#260A14",ok:"#8EDC9E",bad:"#FFA79A"},
+"Zielony las":{bg:"#10301F",card:"#1A4A31",text:"#F1F4EA",muted:"#CADBCB",accent:"#F2B35E",btn:"#F2B35E",btntext:"#10301F",border:"#4F7A5E",bar:"#2E6B4A",hostbar:"#0A2014",ok:"#8EE0A0",bad:"#FFA79A"},
+"Fiolet":{bg:"#24143F",card:"#36215C",text:"#F5F0FA",muted:"#D5C9E6",accent:"#FF9FD0",btn:"#FF9FD0",btntext:"#24143F",border:"#6F5A99",bar:"#563A8C",hostbar:"#170C2B",ok:"#8EE0A8",bad:"#FFA79A"},
+"Granat i czerwień":{bg:"#0B1F3A",card:"#14325A",text:"#F4F4F6",muted:"#C7D2E0",accent:"#FF6B6B",btn:"#E63946",btntext:"#FFFFFF",border:"#476A96",bar:"#2B5A94",hostbar:"#07152A",ok:"#6FD08C",bad:"#FFB3A8"}};
+var palKey="";
+function applyPal(n){if(n===palKey)return;palKey=n;var base=PAL["Morska"],p=PAL[n]||base,r=document.documentElement.style,k;var all={bg:"#0F2A43",card:"#17395A",text:"#F4F1EA",muted:"#C9D6E2",accent:"#F09A5E",btn:"#E8742B",btntext:"#0F2A43",border:"#4A6A8A",bar:"#2C5C8A",hostbar:"#0b1e31",ok:"#6FD08C",bad:"#FF9A8A"};for(k in all)r.setProperty("--"+k,p[k]||all[k])}
+function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}if(d){LOGO=d.logo||"";IDL=d.idl||null;if(d.brk)BRK=d.brk;applyPal(d.palette||"")}}
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
-function show(h){app.innerHTML='<div class="wrap">'+h+'</div>'}
+function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>'}
 function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
 function tok(){var t=ls("tok");if(!t){t=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36);ls("tok",t)}return t}
-function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){return d}).catch(function(){return{ok:1,offline:1}})}
+function idField(){return IDL?'<label class="sub" style="display:block;margin-top:6px">'+esc(IDL.label)+' (opcjonalnie)</label><input class="name" id="uid" maxlength="60" style="margin:6px 0 6px" value="'+esc(ls("uid")||"")+'"><p class="sub" style="font-size:15px;margin:0 0 14px">'+esc(IDL.info)+'</p>':""}
+function idSave(){var e=document.getElementById("uid");if(e)ls("uid",e.value.trim().slice(0,60))}
+function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encodeURIComponent(name)+"&tok="+tok()+"&id="+encodeURIComponent(IDL?(ls("uid")||""):"")).then(function(d){return d}).catch(function(){return{ok:1,offline:1}})}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
 function qr(el,size){if(el&&window.QRCode)new QRCode(el,{text:pageUrl(),width:size,height:size,correctLevel:QRCode.CorrectLevel.M})}
 function err(retry){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak połączenia</h1><div class="msg">Nie udało się pobrać quizu. Sprawdź internet i spróbuj ponownie.</div><p><button class="btn" id="rt">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=retry}
@@ -116,12 +129,12 @@ function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var
 function freePlayer(Q,TIME,openStart,change){
  var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
- function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
- function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("free",v).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
+ function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
+ function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
  function send(){post({type:"result",name:name,pts:pts,good:good,tok:tok()})}
- function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':'Wracamy do prezentacji')+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
+ function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':esc(BRK))+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
  function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}left=TIME;t0=Date.now();show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
   playAudio(q);sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
   Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
@@ -141,7 +154,7 @@ function livePlayer(){
  function key(){return st.game+"|"+st.i}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
- function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("live",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
+ function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("live",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
@@ -156,6 +169,7 @@ function livePlayer(){
    if(a!==undefined)h+='<div class="msg">Odpowiedź zapisana.'+(st.change?' Możesz ją jeszcze zmienić do końca czasu, ale kosztuje to punkty.':' Czekamy na pozostałych.')+'</div>'}
   else if(st.phase==="reveal"){var l=st.last,good=l&&l.ok;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">Brak odpowiedzi.</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+LET[q.c]+'. '+esc(q.o[q.c])+'</b>'+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'}
+  else if(st.phase==="break")h='<p class="eyebrow">Przerwa</p><h1 class="big">'+esc(BRK)+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Nie zamykaj tej strony.</div>';
   else if(st.phase==="ranking")h='<p class="eyebrow">Ranking</p><h1 class="big">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of:'Ranking')+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt. ':'')+'Sprawdź ranking na ekranie głównym.</div>';
   else h='<p class="eyebrow">Koniec quizu</p><h1 class="big">'+(st.me?'Twój wynik: '+st.me.pts+' pkt':'Koniec quizu')+'</h1><div class="msg">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Dziękujemy za grę!</div>';
   show(h);
@@ -179,8 +193,9 @@ function tvPage(){
   b='<div class="hostbar"><input id="pin" type="password" placeholder="PIN" value="'+esc(pin)+'">';
   if(p==="lobby")b+='<button class="btn" data-c="start">Start gry</button>';
   if(p==="question")b+=(st.q&&st.q.audio?'<button class="btn ghost" data-c="replay">▶ Odtwórz ponownie</button>':'')+'<button class="btn" data-c="reveal">Pokaż odpowiedź</button>';
-  if(p==="reveal")b+='<button class="btn" data-c="ranking">Ranking</button><button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
-  if(p==="ranking")b+='<button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
+  if(p==="reveal")b+='<button class="btn" data-c="ranking">Ranking</button><button class="btn ghost" data-c="break">Przerwa</button><button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
+  if(p==="break")b+='<button class="btn" data-c="next">Wróć do gry</button>';
+  if(p==="ranking")b+='<button class="btn ghost" data-c="break">Przerwa</button><button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
   b+='<button class="btn ghost" data-c="reset">Nowa gra (reset)</button></div>';return b}
  function draw(){
   if(!st){show('<p class="sub">Łączenie…</p>');return}
@@ -193,6 +208,7 @@ function tvPage(){
   else if(p==="question")h='<div class="row" style="justify-content:space-between"><p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+(q&&q.cat?' · '+esc(q.cat):'')+'</p><div class="timer" id="tm">'+remaining()+'</div></div><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+((q.typ==="Muzyka"&&!q.audio)||(q.typ==="Zdjęcie"&&!q.img)?'<div class="msg" style="color:#FF9A8A">Brak pliku multimedialnego dla tego pytania. W arkuszu użyj menu Quiz → Sprawdź pytania ze zdjęciem i muzyką.</div>':"")+(q.audio?'<p class="sub">🎵 Fragment muzyczny (jeśli nie słychać, kliknij „Odtwórz ponownie")</p>':"")+tilesHtml(q,{})+'<p class="sub">Odpowiedziało: '+(st.answered||0)+' z '+(st.joined||0)+'</p>';
   else if(p==="reveal"){var dim=[1,1,1,1];dim[q.c]=0;var r3=(st.rank||[]).slice(0,3);
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · poprawna odpowiedź: '+LET[q.c]+'</p><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{dim:dim,cnt:st.dist||[0,0,0,0]})+(q.cap?'<p class="sub">'+esc(q.cap)+'</p>':'')+'<h2 style="margin-top:30px;font-size:36px">Najlepsza trójka</h2>'+rankHtml(r3,3,r3.length?r3[0].pts:0)}
+  else if(p==="break"){var rb=st.rank||[];h='<p class="eyebrow">Przerwa</p><h1 class="big" style="font-size:clamp(40px,7vw,96px)">'+esc(BRK)+'</h1><h2 style="margin-top:30px;font-size:32px">Najlepsi gracze</h2>'+rankHtml(rb,5,rb.length?rb[0].pts:0)}
   else{var rk=st.rank||[];h='<p class="eyebrow">'+(p==="final"?"Koniec quizu":"Ranking po pytaniu "+(st.i+1))+'</p><h1 class="big">'+(p==="final"?"Wyniki końcowe":"Najlepsi gracze")+'</h1>'+rankHtml(rk,10,rk.length?rk[0].pts:0)}
   show(h+(st.mode==="live"?'<div style="height:90px"></div>':""));
   if(st.mode==="live"){if(p==="question"&&q&&q.audio){var kk=st.game+"|"+st.i;if(tvKey!==kk){tvKey=kk;stopAudio();AU=new Audio(q.audio);AU.play().catch(function(){})}}else stopAudio()}
@@ -217,12 +233,12 @@ function gpPage(){
    var lim=d.limit<50,tries=d.tries||0,blocked=lim&&tries>=d.limit;
    h+='<p class="sub">Runda '+d.round.n+' · otwarta do: '+esc(when(d.round.end))+'</p><p class="sub">'+d.round.count+' pytań, '+(d.time||20)+' s na każde. '+(d.best?'W klasyfikacji liczy się najlepszy wynik z rundy.':'W klasyfikacji liczy się pierwsza próba w rundzie.')+(lim?' Próby: '+tries+' z '+d.limit+'.':'')+'</p>';
    if(blocked)h+='<div class="msg">Wykorzystano wszystkie próby w tej rundzie. Wróć w kolejną niedzielę.</div>';
-   else h+='<input class="name" id="nm" maxlength="20" placeholder="Pseudonim (np. nazwa rodziny)" value="'+esc(name)+'"><button class="btn" id="go">Start</button>'}
+   else h+='<input class="name" id="nm" maxlength="20" placeholder="Pseudonim (np. nazwa rodziny)" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>'}
   else{h+='<div class="msg">Nie ma teraz otwartej rundy.'+(d.next?' Następna, runda '+d.next.n+', startuje: '+esc(when(d.next.start))+'.':'')+'</div>'}
   show(h+board(d));
   var b=document.getElementById("go");if(b)b.onclick=begin}).catch(function(){err(home)})}
  function begin(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;
-  claim("gp",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty przez inne urządzenie. Wybierz inny.</div>');return}
+  (idSave(),claim("gp",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty przez inne urządzenie. Wybierz inny.</div>');return}
    name=v;ls("gpn",name);
    get("action=gpquestions").then(function(d){if(!d.ok||!d.questions||!d.questions.length){home();return}Q=d.questions;TIME=d.time||20;change=!!d.change;round=d.round;i=0;ch=[];ms=[];ask()}).catch(function(){err(home)})})}
  function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
