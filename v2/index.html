@@ -86,6 +86,9 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid #4A6A8A;b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 var SCRIPT_URL="https://script.google.com/macros/s/AKfycbz4e9oBETSZ1E2W5HgDCMPa7KP2Uzk7VcQupOLNoCw4yFNaVEXits1yqmRA9E-XT5jb/exec";
+var QT="Quiz",QS="";
+function QSUB(){return QS?" · "+QS:""}
+function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}}
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
@@ -97,7 +100,7 @@ function tok(){var t=ls("tok");if(!t){t=Math.random().toString(36).slice(2)+Math
 function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){return d}).catch(function(){return{ok:1,offline:1}})}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
 function qr(el,size){if(el&&window.QRCode)new QRCode(el,{text:pageUrl(),width:size,height:size,correctLevel:QRCode.CorrectLevel.M})}
-function err(retry){show('<p class="eyebrow">Quiz żeglarski</p><h1 class="big">Brak połączenia</h1><div class="msg">Nie udało się pobrać quizu. Sprawdź internet i spróbuj ponownie.</div><p><button class="btn" id="rt">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=retry}
+function err(retry){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak połączenia</h1><div class="msg">Nie udało się pobrać quizu. Sprawdź internet i spróbuj ponownie.</div><p><button class="btn" id="rt">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=retry}
 function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<4;k++){var c="tile t"+k+(o.dim&&o.dim[k]?" dim":"")+(o.pick===k?" pick":"");var inner='<span class="sym">'+SYM[k]+'</span>'+esc(q.o[k])+(o.cnt?'<span class="cnt">'+o.cnt[k]+'</span>':"");h+=o.btn?'<button class="'+c+'" data-i="'+k+'"'+(o.off?" disabled":"")+'>'+inner+'</button>':'<div class="'+c+'">'+inner+'</div>'}return h+"</div>"}
 function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b></span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
 
@@ -105,7 +108,7 @@ function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var
 function freePlayer(Q,TIME,openStart,change){
  var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
- function intro(){show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
+ function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+Q.length+' pytań, '+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
  function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("free",v).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
@@ -130,7 +133,7 @@ function livePlayer(){
  function key(){return st.game+"|"+st.i}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
- function nameScreen(){show('<p class="eyebrow">Quiz żeglarski · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("live",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
+ function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Podaj pseudonim</h1><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'"><button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;claim("live",v).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
@@ -150,7 +153,7 @@ function livePlayer(){
   show(h);
   Array.prototype.forEach.call(document.querySelectorAll("[data-i]"),function(b){b.onclick=function(){answer(+b.getAttribute("data-i"))}})}
  function answer(k){if(!st||st.phase!=="question"||remaining()<=0)return;if(ans[key()]!==undefined&&(!st.change||ans[key()]===k))return;ans[key()]=k;saveAns();post({type:"answer",name:name,i:st.i,choice:k,ms:Date.now()+off-st.startedAt});lastSig="";draw()}
- function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){off=d.now-Date.now();st=d;draw()}).catch(function(){})}
+ function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){setT(d);off=d.now-Date.now();st=d;draw()}).catch(function(){})}
  setInterval(function(){var e=document.getElementById("tm");if(e&&st&&st.phase==="question"){e.textContent=remaining()+" s";if(remaining()<=0){lastSig="";draw()}}},300);
  load();
  if(name&&ls("joined")===name)joined=true;
@@ -177,8 +180,8 @@ function tvPage(){
   var h="",q=st.q,p=st.phase;
   if(st.mode!=="live"){
    var fr=st.freerank||[],mx=fr.length?fr[0].pts:0;
-   h='<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zagraj telefonem</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem. Bez logowania, w dowolnym momencie.</p><h2 style="margin-top:28px;font-size:36px">Najlepsze wyniki</h2>'+(fr.length?rankHtml(fr,10,mx):'<p class="sub">Czekamy na pierwszych graczy.</p>')+'</div></div>'}
-  else if(p==="lobby")h='<p class="eyebrow">Quiz żeglarski · na żywo</p><h1 class="big">Dołącz telefonem</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem, wpisz pseudonim i czekaj na pierwsze pytanie.</p><p class="sub">Dołączyło: <b>'+(st.joined||0)+'</b></p><div class="row" style="margin-top:20px">'+(st.names||[]).map(function(n){return'<span class="chip">'+esc(n)+'</span>'}).join("")+'</div></div></div>';
+   h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj telefonem</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem. Bez logowania, w dowolnym momencie.</p><h2 style="margin-top:28px;font-size:36px">Najlepsze wyniki</h2>'+(fr.length?rankHtml(fr,10,mx):'<p class="sub">Czekamy na pierwszych graczy.</p>')+'</div></div>'}
+  else if(p==="lobby")h='<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Dołącz telefonem</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem, wpisz pseudonim i czekaj na pierwsze pytanie.</p><p class="sub">Dołączyło: <b>'+(st.joined||0)+'</b></p><div class="row" style="margin-top:20px">'+(st.names||[]).map(function(n){return'<span class="chip">'+esc(n)+'</span>'}).join("")+'</div></div></div>';
   else if(p==="question")h='<div class="row" style="justify-content:space-between"><p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+(q&&q.cat?' · '+esc(q.cat):'')+'</p><div class="timer" id="tm">'+remaining()+'</div></div><h1 class="big">'+esc(q.q)+'</h1>'+tilesHtml(q,{})+'<p class="sub">Odpowiedziało: '+(st.answered||0)+' z '+(st.joined||0)+'</p>';
   else if(p==="reveal"){var dim=[1,1,1,1];dim[q.c]=0;var r3=(st.rank||[]).slice(0,3);
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · poprawna odpowiedź: '+LET[q.c]+'</p><h1 class="big">'+esc(q.q)+'</h1>'+tilesHtml(q,{dim:dim,cnt:st.dist||[0,0,0,0]})+'<h2 style="margin-top:30px;font-size:36px">Najlepsza trójka</h2>'+rankHtml(r3,3,r3.length?r3[0].pts:0)}
@@ -187,7 +190,7 @@ function tvPage(){
   var qe=document.getElementById("qr");if(qe)qr(qe,380);
   app.insertAdjacentHTML("beforeend",bar());
   Array.prototype.forEach.call(document.querySelectorAll("[data-c]"),function(b){b.onclick=function(){var c=b.getAttribute("data-c");if(c==="reset"&&!confirm("Zacząć nową grę? Obecne wyniki zostaną usunięte."))return;pin=document.getElementById("pin").value;ls("pin",pin);cmd(c)}})}
- function tick(){get("action=state&full=1").then(function(d){off=d.now-Date.now();st=d;draw()}).catch(function(){})}
+ function tick(){get("action=state&full=1").then(function(d){setT(d);off=d.now-Date.now();st=d;draw()}).catch(function(){})}
  setInterval(function(){if(!st)return;var e=document.getElementById("tm");if(e&&st.phase==="question"){e.textContent=remaining();
    if(remaining()<=0&&pin&&!auto[st.game+st.i]){auto[st.game+st.i]=1;post({type:"host",cmd:"reveal",pin:pin});setTimeout(tick,700)}}},300);
  draw();tick();setInterval(tick,1500)}
@@ -198,8 +201,8 @@ function gpPage(){
  var name=ls("gpn"),Q=[],TIME=20,round=0,ch=[],ms=[],t0=0,tm=null,i=0,change=false,sel=-1,selT=0;
  function when(t){try{return new Date(t).toLocaleString("pl-PL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
  function board(d){if(!d.rank||!d.rank.length)return"";var rows=d.rank.slice(0,10).map(function(r){return{name:r.name,pts:r.total}});var mx=rows[0].pts||1,me=d.me?'<div class="msg">Twoje miejsce: <b>'+d.me.place+'</b> z '+d.me.of+', razem <b>'+d.me.total+'</b> pkt (rozegrane rundy: '+d.me.rounds+').</div>':"";return'<h2 style="margin-top:30px">Klasyfikacja generalna</h2>'+me+rankHtml(rows,10,mx)}
- function home(){show('<p class="sub">Ładowanie…</p>');get("action=gp&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){
-  var h='<p class="eyebrow">Quiz żeglarski · Grand Prix</p><h1 class="big">'+esc(d.name||"Grand Prix")+'</h1>';
+ function home(){show('<p class="sub">Ładowanie…</p>');get("action=gp&name="+encodeURIComponent(name)+"&tok="+tok()).then(function(d){setT(d);
+  var h='<p class="eyebrow">'+QT+' · Grand Prix</p><h1 class="big">'+esc(d.name||"Grand Prix")+'</h1>';
   if(!d.on){h+='<div class="msg">Grand Prix nie jest teraz aktywne.</div>'}
   else if(d.round){
    var lim=d.limit<50,tries=d.tries||0,blocked=lim&&tries>=d.limit;
@@ -232,12 +235,12 @@ function gpPage(){
 function boot(){
  if(hash==="tv"){tvPage();return}
  if(hash==="gp"){gpPage();return}
- if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">Quiz żeglarski · Podsumowanie Sezonu 2026</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Aparat telefonu otwiera quiz bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
+ if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Aparat telefonu otwiera quiz bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
  show('<p class="sub">Ładowanie quizu…</p>');
- get("action=config").then(function(c){
+ get("action=config").then(function(c){setT(c);
   if(c.mode==="live"){livePlayer();return}
   get("action=questions").then(function(d){
-   if(!d.questions||!d.questions.length){show('<p class="eyebrow">Quiz żeglarski</p><h1 class="big">Brak pytań</h1>');return}
+   if(!d.questions||!d.questions.length){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak pytań</h1>');return}
    freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change)}).catch(function(){err(boot)})
  }).catch(function(){err(boot)})}
 boot();

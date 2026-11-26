@@ -47,6 +47,8 @@ function cfg_() {
     open: (open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
     pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
     change: c['Zmiana odpowiedzi w czasie pytania'] === 'Tak',
+    title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
+    sub: c.hasOwnProperty('Podtytuł (np. nazwa wydarzenia)') ? String(c['Podtytuł (np. nazwa wydarzenia)']).trim() : 'Podsumowanie Sezonu 2026',
     gp: c['Grand Prix'] === 'Włączone',
     gpName: String(c['Nazwa sezonu Grand Prix'] || 'Grand Prix'),
     gpN: Number(c['Liczba pytań w rundzie']) || 5,
@@ -133,7 +135,7 @@ function freeRanking_() {
 
 function stateOut_(p) {
   var c = cfg_(), st = getState_(), out = {
-    mode: c.mode, phone: c.phone, time: c.time, change: c.change, now: Date.now(),
+    mode: c.mode, phone: c.phone, time: c.time, change: c.change, title: c.title, sub: c.sub, now: Date.now(),
     game: st.game, phase: st.phase, i: st.i, n: st.ids.length, startedAt: st.startedAt
   };
   if (st.i >= 0 && st.i < st.ids.length && (st.phase === 'question' || st.phase === 'reveal' || st.phase === 'ranking')) {
@@ -256,7 +258,7 @@ function gpPublic_(c, name) {
     rk = gpRanking_(c).slice(0, 30).map(function (p) { return { name: p.name, key: p.key, total: p.total, rounds: p.rounds }; });
     cache.put('gprank', JSON.stringify(rk), 5);
   }
-  var out = { on: c.gp, name: c.gpName, change: c.change, best: c.gpBest, limit: c.gpLimit, time: c.time, now: Date.now(), rank: rk.slice(0, 20) };
+  var out = { on: c.gp, name: c.gpName, title: c.title, sub: c.sub, change: c.change, best: c.gpBest, limit: c.gpLimit, time: c.time, now: Date.now(), rank: rk.slice(0, 20) };
   var r = openRound_(), nx = nextRound_();
   if (c.gp && r) {
     out.round = { n: r.n, end: r.end, start: r.start, count: roundQuestions_(r, c).length };
@@ -365,9 +367,9 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change });
+  if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, title: c.title, sub: c.sub });
   if (action === 'questions') {
-    return json_({ time: c.time, open: c.open, change: c.change, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
+    return json_({ time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
   if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
