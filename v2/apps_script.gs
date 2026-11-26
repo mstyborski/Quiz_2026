@@ -47,6 +47,7 @@ function cfg_() {
     open: (open === '' || String(open).toLowerCase() === 'wszystkie') ? 999 : Number(open) || 0,
     pin: String(c['PIN prowadzącego'] === undefined ? '' : c['PIN prowadzącego']),
     change: c['Zmiana odpowiedzi w czasie pytania'] === 'Tak',
+    folder: (function (v) { v = String(v || '').trim(); var m = v.match(/folders\/([\w-]+)/); return m ? m[1] : v; })(c['Folder ze zdjęciami i nagraniami (link lub ID)']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
     sub: c.hasOwnProperty('Podtytuł (np. nazwa wydarzenia)') ? String(c['Podtytuł (np. nazwa wydarzenia)']).trim() : 'Podsumowanie Sezonu 2026',
     gp: c['Grand Prix'] === 'Włączone',
@@ -62,13 +63,14 @@ function cfg_() {
 function questions_(category) {
   var s = sh_('Pytania'), last = s.getLastRow();
   if (last < 2) return [];
-  var rows = s.getRange(2, 1, last - 1, 8).getValues(), out = [];
+  var rows = s.getRange(2, 1, last - 1, 11).getValues(), out = [];
   rows.forEach(function (r, k) {
     if (!r[1] || String(r[7]).toUpperCase() !== 'TAK') return;
     if (category && category !== 'Wszystkie' && String(r[0]) !== category) return;
     var c = 'ABCD'.indexOf(String(r[6]).trim().toUpperCase());
     if (c < 0) return;
-    out.push({ id: k + 2, cat: String(r[0]), q: String(r[1]).trim(), o: [r[2], r[3], r[4], r[5]].map(String), c: c });
+    out.push({ id: k + 2, cat: String(r[0]), q: String(r[1]).trim(), o: [r[2], r[3], r[4], r[5]].map(String), c: c,
+      typ: String(r[8] || 'Tekst').trim(), src: String(r[9] || '').trim(), cap: String(r[10] || '').trim() });
   });
   return out;
 }
@@ -77,6 +79,51 @@ function questionById_(id) {
   var all = questions_('Wszystkie'), i;
   for (i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
   return null;
+}
+
+// ======================= ZDJĘCIA I MUZYKA =======================
+// Nazwa pliku (z rozszerzeniem lub bez) -> id, z folderu na Dysku Google. Cache 5 min.
+function folderMap_(c) {
+  if (!c.folder) return {};
+  var cache = CacheService.getScriptCache(), hit = cache.get('fm');
+  if (hit) return JSON.parse(hit);
+  var m = {};
+  try {
+    var f = DriveApp.getFolderById(c.folder);
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+    var it = f.getFiles();
+    while (it.hasNext()) {
+      var x = it.next(), n = x.getName().toLowerCase(), b = n.replace(/\.[^.]+$/, '');
+      m[n] = x.getId(); if (!m[b]) m[b] = x.getId();
+    }
+  } catch (e) {}
+  cache.put('fm', JSON.stringify(m), 300);
+  return m;
+}
+
+// Adres zdjęcia / dźwięku dla pytania; fragmenty muzyki szuka w iTunes. Wynik w cache 6 h.
+function mediaFor_(q, c) {
+  if (!q.src || q.typ === 'Tekst') return {};
+  var cache = CacheService.getScriptCache(), ck = 'm|' + q.typ + '|' + q.src, hit = cache.get(ck);
+  if (hit) return JSON.parse(hit);
+  var out = {}, src = q.src, id = folderMap_(c)[src.toLowerCase()] || null;
+  if (!id) { var mm = src.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/); if (mm) id = mm[1] || mm[2]; }
+  if (q.typ === 'Zdjęcie') {
+    if (id) out.img = 'https://lh3.googleusercontent.com/d/' + id + '=w1600';
+    else if (/^https?:/i.test(src)) out.img = src;
+  } else if (q.typ === 'Muzyka') {
+    if (id) out.audio = 'https://drive.google.com/uc?export=download&id=' + id;
+    else if (/^https?:/i.test(src)) out.audio = src;
+    else {
+      try {
+        var r = JSON.parse(UrlFetchApp.fetch('https://itunes.apple.com/search?media=music&entity=song&limit=5&country=PL&term=' + encodeURIComponent(src), { muteHttpExceptions: true }).getContentText());
+        var t = (r.results || []).filter(function (x) { return x.previewUrl; })[0];
+        if (t) { out.audio = t.previewUrl; out.auto = t.artistName + ' – ' + t.trackName; }
+      } catch (e) {}
+    }
+  }
+  if (out.img || out.audio) cache.put(ck, JSON.stringify(out), 21600);
+  return out;
 }
 
 function json_(o) {
@@ -141,8 +188,9 @@ function stateOut_(p) {
   if (st.i >= 0 && st.i < st.ids.length && (st.phase === 'question' || st.phase === 'reveal' || st.phase === 'ranking')) {
     var q = questionById_(st.ids[st.i]);
     if (q) {
-      out.q = { q: q.q, o: q.o, cat: q.cat };
-      if (st.phase !== 'question') out.q.c = q.c;
+      var md = mediaFor_(q, c);
+      out.q = { q: q.q, o: q.o, cat: q.cat, typ: q.typ, img: md.img, audio: md.audio };
+      if (st.phase !== 'question') { out.q.c = q.c; out.q.cap = q.cap || md.auto || ''; }
     }
   }
   var rk = ranking_(st.game);
@@ -277,7 +325,7 @@ function gpQuestions_(c, p) {
   if (!c.gp || !r) return { ok: 0, closed: 1 };
   var qs = roundQuestions_(r, c);
   return { ok: 1, round: r.n, end: r.end, time: c.time, change: c.change,
-    questions: qs.map(function (q) { return { id: q.id, q: q.q, o: q.o, cat: q.cat }; }) };
+    questions: qs.map(function (q) { var md = mediaFor_(q, c); return { id: q.id, q: q.q, o: q.o, cat: q.cat, img: md.img, audio: md.audio }; }) };
 }
 
 function gpSubmit_(c, p) {
@@ -297,7 +345,7 @@ function gpSubmit_(c, p) {
       var ms = Math.min(c.time * 1000, Math.max(0, Number(m[i]) || 0));
       var ok = ch === q.c ? 1 : 0;
       if (ok) { good++; pts += 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))); }
-      det.push({ ch: ch, c: q.c, ok: ok });
+      det.push({ ch: ch, c: q.c, ok: ok, cap: q.cap || mediaFor_(q, c).auto || '' });
     });
     var s = sh_(GPA);
     if (!s) { s = SpreadsheetApp.getActive().insertSheet(GPA); s.appendRow(['Czas', 'Runda', 'Klucz', 'Pseudonim', 'Próba', 'Punkty', 'Poprawne']); s.setFrozenRows(1); }
@@ -369,7 +417,7 @@ function doGet(e) {
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
   if (action === 'config') return json_({ mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, title: c.title, sub: c.sub });
   if (action === 'questions') {
-    return json_({ time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { return { q: q.q, o: q.o, c: q.c, cat: q.cat }; }) });
+    return json_({ time: c.time, open: c.open, change: c.change, title: c.title, sub: c.sub, questions: questions_(c.category).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) });
   }
   if (action === 'state') return json_(stateOut_(p));
   if (action === 'gp') return json_(gpPublic_(c, String(p.name || '').slice(0, 20)));
