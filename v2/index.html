@@ -90,6 +90,7 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 <script>
 var SCRIPT_URL="https://script.google.com/macros/s/AKfycbz4e9oBETSZ1E2W5HgDCMPa7KP2Uzk7VcQupOLNoCw4yFNaVEXits1yqmRA9E-XT5jb/exec";
 var QT="Quiz",QS="";
+function plPyt(n){var d=n%10,s=n%100;return n===1?"pytanie":(d>=2&&d<=4&&(s<12||s>14))?"pytania":"pytań"}
 function QSUB(){return QS?" · "+QS:""}
 var LOGO="",IDL=null,BRK="Za chwilę wracamy do gry…";
 var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"#4A5B6C",accent:"#C2571A",btn:"#C2571A",btntext:"#FFFFFF",border:"#B8C2CC",bar:"#BFD4E8",hostbar:"#E4E0D6",ok:"#1E7B46",bad:"#B3261E",pick:"#111111"},
@@ -109,7 +110,7 @@ function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
 function tok(){var t=ls("tok");if(!t){t=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36);ls("tok",t)}return t}
-function idField(){return IDL?'<label class="sub" style="display:block;margin-top:6px">'+esc(IDL.label)+' (opcjonalnie)</label><input class="name" id="uid" maxlength="60" style="margin:6px 0 6px" value="'+esc(ls("uid")||"")+'"><p class="sub" style="font-size:15px;margin:0 0 14px">'+esc(IDL.info)+'</p>':""}
+function idField(){return IDL?'<input class="name" id="uid" maxlength="60" style="margin:0 0 6px" placeholder="'+esc(IDL.label)+' (opcjonalnie)" value="'+esc(ls("uid")||"")+'"><p class="sub" style="font-size:15px;margin:0 0 14px">'+esc(IDL.info)+'</p>':""}
 function idSave(){var e=document.getElementById("uid");if(e)ls("uid",e.value.trim().slice(0,60))}
 function claim(scope,name){return get("action=claim&scope="+scope+"&name="+encodeURIComponent(name)+"&tok="+tok()+"&id="+encodeURIComponent(IDL?(ls("uid")||""):"")).then(function(d){return d}).catch(function(){return{ok:1,offline:1}})}
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
@@ -129,7 +130,7 @@ function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var
 function freePlayer(Q,TIME,openStart,change,FL,FB){
  var att="",tries=0,i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
- function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. '+(FL<999?'Liczba podejść: '+FL+'. '+(FB?'Liczy się najlepszy wynik. ':'Liczy się pierwsza próba. '):(FB?'':'Liczy się pierwsza próba. '))+'Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
+ function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' '+plPyt(Q.length)+'. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. '+(FL<999?'Liczba podejść: '+FL+'. '+(FB?'Liczy się najlepszy wynik. ':'Liczy się pierwsza próba. '):(FB?'':'Liczy się pierwsza próba. '))+'Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
  function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}if(r.limit&&r.tries>=r.limit){b.disabled=false;limitScreen(v);return}tries=(r.tries||0)+1;att=Date.now().toString(36)+Math.random().toString(36).slice(2,6);name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
  function limitScreen(v){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Limit podejść wykorzystany</h1><div class="msg">Pseudonim '+esc(v)+' rozegrał już '+FL+' '+(FL===1?'podejście':'podejścia')+'. '+(FB?'W rankingu liczy się najlepszy wynik.':'W rankingu liczy się pierwsza próba.')+'</div>')}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
