@@ -58,6 +58,8 @@ function cfg_() {
     idOn: c['Dane uczestnika (opcjonalne)'] === 'Włączone',
     idLabel: String(c['Etykieta pola danych uczestnika'] || 'Imię i nazwisko lub nr indeksu'),
     idInfo: String(c['Informacja przy polu danych'] || 'Nie wyświetlamy tego na ekranie. Podaj, jeśli chcesz być uwzględniony w nagrodach.'),
+    freeLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Tryb dowolny: limit prób']),
+    freeBest: String(c['Tryb dowolny: zasada punktów'] || '').indexOf('Tylko') !== 0,
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
     freeTo: toDate_(c['Tryb dowolny: otwarty do']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
@@ -266,16 +268,36 @@ function saveCurrentGame() {
   SpreadsheetApp.getUi().alert(n ? 'Zapisano ' + n + ' wyników w karcie "' + HIST + '".' : 'Bieżąca gra jest już zapisana albo nie ma w niej odpowiedzi.');
 }
 
-function freeRanking_() {
+// Wiersze trybu dowolnego bieżącej sesji (od początku okna, jeśli ustawione).
+// Kolumny: Czas, Pseudonim, Punkty, Poprawne, Dane uczestnika, Quiz, Próba.
+function freeRows_(c) {
   var s = sh_('Odpowiedzi'), last = s.getLastRow();
   if (last < 2) return [];
+  var from = c.freeFrom ? c.freeFrom.getTime() : 0;
+  return s.getRange(2, 1, last - 1, 7).getValues().map(function (r, i) {
+    return { t: r[0] instanceof Date ? r[0].getTime() : 0, name: String(r[1]), key: nkey_(r[1]), pts: Number(r[2]) || 0, good: Number(r[3]) || 0, att: String(r[6] || ('w' + i)) };
+  }).filter(function (r) { return r.name && (!from || r.t >= from); });
+}
+function freeAttempts_(c, key, rows) {
+  var seen = {}, out = [];
+  (rows || freeRows_(c)).forEach(function (r) { if (r.key === key && !seen[r.att]) { seen[r.att] = 1; out.push(r.att); } });
+  return out;
+}
+// Ranking: w każdej próbie liczy się jej najwyższy (końcowy) wynik;
+// potem pierwsza próba albo najlepsza, zależnie od zasady w Sterowaniu.
+function freeRanking_(c) {
+  c = c || cfg_();
   var by = {};
-  s.getRange(2, 1, last - 1, 4).getValues().forEach(function (r) {
-    var n = String(r[1]); if (!n) return;
-    var pts = Number(r[2]) || 0;
-    if (!by[n] || pts > by[n].pts) by[n] = { name: n, pts: pts, good: Number(r[3]) || 0 };
+  freeRows_(c).forEach(function (r) {
+    var p = by[r.key] || (by[r.key] = { name: r.name, order: [], att: {} });
+    if (!p.att[r.att]) { p.att[r.att] = { pts: r.pts, good: r.good }; p.order.push(r.att); }
+    else if (r.pts >= p.att[r.att].pts) p.att[r.att] = { pts: r.pts, good: r.good };
   });
-  return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.pts - a.pts; });
+  return Object.keys(by).map(function (k) {
+    var p = by[k], pick = p.att[p.order[0]];
+    if (c.freeBest) p.order.forEach(function (a) { if (p.att[a].pts > pick.pts) pick = p.att[a]; });
+    return { name: p.name, pts: pick.pts, good: pick.good, tries: p.order.length };
+  }).sort(function (a, b) { return b.pts - a.pts; });
 }
 
 function stateOut_(p) {
@@ -312,7 +334,7 @@ function stateOut_(p) {
       out.dist = d;
     }
     if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'break' || st.phase === 'final') out.rank = rk.slice(0, 10);
-    if (c.mode === 'free') out.freerank = freeRanking_().slice(0, 10);
+    if (c.mode === 'free') out.freerank = freeRanking_(c).slice(0, 10);
   }
   return out;
 }
@@ -508,7 +530,7 @@ function idReport() {
   var c = cfg_(), n = sh_(NAMES), out = [];
   if (!n || n.getLastRow() < 2) { SpreadsheetApp.getUi().alert('Brak zarejestrowanych uczestników.'); return; }
   var free = {}, gp = {}, live = {}, game = getState_().game;
-  freeRanking_().forEach(function (r) { free[nkey_(r.name)] = r; });
+  freeRanking_(c).forEach(function (r) { free[nkey_(r.name)] = r; });
   gpRanking_(c).forEach(function (r) { gp[r.key] = { pts: r.total, good: '' }; });
   ranking_(game).forEach(function (r) { live[nkey_(r.name)] = r; });
   n.getRange(2, 1, n.getLastRow() - 1, 6).getValues().forEach(function (r) {
@@ -552,7 +574,7 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change }, c));
+  if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, flimit: c.freeLimit, fbest: c.freeBest }, c));
   if (action === 'questions') {
     return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: questions_(c.category).slice(0, c.nq || 999).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) }, c));
   }
@@ -563,7 +585,9 @@ function doGet(e) {
   if (action === 'claim') {
     var scope = p.scope === 'live' ? getState_().game : (p.scope === 'gp' ? 'gp' : 'free');
     if (!p.tok) return json_({ ok: 0 });
-    return json_(claim_(scope, String(p.name || '').slice(0, 20), p.tok, p.id));
+    var cr = claim_(scope, String(p.name || '').slice(0, 20), p.tok, p.id);
+    if (cr.ok && scope === 'free') { cr.tries = freeAttempts_(c, nkey_(p.name)).length; cr.limit = c.freeLimit; cr.best = c.freeBest; }
+    return json_(cr);
   }
   return json_({ error: 'unknown action' });
 }
@@ -573,9 +597,14 @@ function doPost(e) {
   if (type === 'result') {                                                   // wynik w trybie dowolnym
     if (freeWindow_(c, 300000).status !== 'open') return json_({ ok: 0, closed: 1 });
     if (d.tok && !claim_('free', String(d.name).slice(0, 20), d.tok).ok) return json_({ ok: 0, taken: 1 });
-    var od = sh_('Odpowiedzi');
-    od.appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good), String(d.id || '').slice(0, 60), c.title + (c.sub ? ' · ' + c.sub : '')]);
-    try { writeRankSheet_('Tryb dowolny · ' + c.title + (c.sub ? ' · ' + c.sub : '') + ' (najlepszy wynik gracza)', freeRanking_(), uidMap_('free')); } catch (e) {}
+    var od = sh_('Odpowiedzi'), att = String(d.att || ('x' + Date.now())).slice(0, 24);
+    var lk = LockService.getScriptLock(); lk.waitLock(8000);
+    try {
+      var at = freeAttempts_(c, nkey_(d.name));
+      if (at.indexOf(att) < 0 && at.length >= c.freeLimit) return json_({ ok: 0, limit: 1 });
+      od.appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good), String(d.id || '').slice(0, 60), c.title + (c.sub ? ' · ' + c.sub : ''), att]);
+    } finally { lk.releaseLock(); }
+    try { writeRankSheet_('Tryb dowolny · ' + c.title + (c.sub ? ' · ' + c.sub : '') + ' ' + (c.freeBest ? '(najlepszy wynik gracza)' : '(pierwsza próba gracza)'), freeRanking_(c), uidMap_('free')); } catch (e) {}
     return json_({ ok: 1 });
   }
   if (type === 'host') return json_(host_(d, c));

@@ -126,14 +126,15 @@ function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<4;k++){var c="
 function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b></span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
 
 /* ---------- Telefon: tryb dowolny ---------- */
-function freePlayer(Q,TIME,openStart,change){
- var i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
+function freePlayer(Q,TIME,openStart,change,FL,FB){
+ var att="",tries=0,i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
- function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
- function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
+ function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zagraj na telefonie</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' pytań. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. '+(FL<999?'Liczba podejść: '+FL+'. '+(FB?'Liczy się najlepszy wynik. ':'Liczy się pierwsza próba. '):(FB?'':'Liczy się pierwsza próba. '))+'Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
+ function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}if(r.limit&&r.tries>=r.limit){b.disabled=false;limitScreen(v);return}tries=(r.tries||0)+1;att=Date.now().toString(36)+Math.random().toString(36).slice(2,6);name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
+ function limitScreen(v){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Limit podejść wykorzystany</h1><div class="msg">Pseudonim '+esc(v)+' rozegrał już '+FL+' '+(FL===1?'podejście':'podejścia')+'. '+(FB?'W rankingu liczy się najlepszy wynik.':'W rankingu liczy się pierwsza próba.')+'</div>')}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
- function send(){post({type:"result",name:name,pts:pts,good:good,tok:tok(),id:IDL?(ls("uid")||""):""})}
+ function send(){post({type:"result",att:att,name:name,pts:pts,good:good,tok:tok(),id:IDL?(ls("uid")||""):""})}
  function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':esc(BRK))+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
  function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}left=TIME;t0=Date.now();show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
   playAudio(q);sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
@@ -145,7 +146,7 @@ function freePlayer(Q,TIME,openStart,change){
   show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{dim:dim,pick:k}));
   app.querySelector(".wrap").insertAdjacentHTML("beforeend",'<div class="msg">'+(k<0?'<span class="bad">Czas minął.</span>':ok?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>')+' +'+gain+' pkt, razem '+pts+' pkt.'+(q.cap?'<br>'+esc(q.cap):'')+'</div><p><button class="btn" id="nx" style="margin-top:20px">'+(i+1>=Q.length?"Zobacz wynik":"Dalej")+'</button></p>');
   document.getElementById("nx").onclick=function(){i++;next()}}
- function fin(){send();show('<p class="eyebrow">Koniec quizu</p><h1 class="big">'+esc(name)+', twój wynik: '+pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+good+' z '+Q.length+'. Dziękujemy za grę!</div><p><button class="btn ghost" id="again" style="margin-top:20px">Zagraj jeszcze raz</button></p>');document.getElementById("again").onclick=intro}
+ function fin(){send();show('<p class="eyebrow">Koniec quizu</p><h1 class="big">'+esc(name)+', twój wynik: '+pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+good+' z '+Q.length+'. '+(FL<999?'<br>Wykorzystane podejścia: '+tries+' z '+FL+'.':'')+(!FB?'<br>W rankingu liczy się pierwsza próba.':'')+' Dziękujemy za grę!</div>'+(tries<FL?'<p><button class="btn ghost" id="again" style="margin-top:20px">Zagraj jeszcze raz</button></p>':''));var ag=document.getElementById("again");if(ag)ag.onclick=intro}
  intro()}
 
 /* ---------- Telefon: tryb na żywo ---------- */
@@ -267,7 +268,7 @@ function boot(){
   if(c.win&&c.win.status!=="open"){closedScreen(c.win);return}
   get("action=questions").then(function(d){
    if(!d.questions||!d.questions.length){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak pytań</h1>');return}
-   freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change)}).catch(function(){err(boot)})
+   freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change,Number(c.flimit)||999,c.fbest!==false)}).catch(function(){err(boot)})
  }).catch(function(){err(boot)})}
 boot();
 </script>
