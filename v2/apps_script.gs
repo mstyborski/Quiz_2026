@@ -1,5 +1,5 @@
 // Quiz sezonu 2026: serwer w Apps Script (arkusz "Quiz 2026 – wyniki").
-// Karty arkusza: Sterowanie, Pytania, Kategorie, Odpowiedzi, Odpowiedzi live, Ranking.
+// Karty arkusza: Sterowanie, Pytania, Kategorie, Odpowiedzi, Odpowiedzi live, Ranking, Historia wyników.
 
 var LIVE = 'Odpowiedzi live';
 var NAMES = 'Pseudonimy';   // rezerwacje pseudonimów: Gra, Klucz, Pseudonim, Kod urządzenia, Czas
@@ -211,6 +211,61 @@ function ranking_(game) {
   return arr;
 }
 
+// ---------- Ranking bieżący (karta Ranking + wykres) i historia gier ----------
+var HIST = 'Historia wyników', RANKS = 'Ranking';
+
+function uidMap_(scope) {
+  var n = sh_(NAMES), m = {};
+  if (!n || n.getLastRow() < 2) return m;
+  n.getRange(2, 1, n.getLastRow() - 1, 6).getValues().forEach(function (r) {
+    if (String(r[0]) === String(scope) && r[5]) m[String(r[1])] = String(r[5]);
+  });
+  return m;
+}
+function liveRank_(game) {   // bez pamięci podręcznej
+  var by = {};
+  liveRows_(game).forEach(function (r) {
+    var n = String(r[2]);
+    if (!by[n]) by[n] = { name: n, pts: 0, good: 0 };
+    if (Number(r[3]) >= 0) { by[n].pts += Number(r[6]) || 0; by[n].good += Number(r[5]) || 0; }
+  });
+  return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.pts - a.pts; });
+}
+// Karta Ranking: wiersz 1 tytuł, wiersz 2 nagłówki, od wiersza 3 gracze.
+// Kolumny Z:AA (formuły) zasilają wykres, więc ich nie czyścimy.
+function writeRankSheet_(title, arr, uids) {
+  var s = sh_(RANKS) || SpreadsheetApp.getActive().insertSheet(RANKS);
+  s.getRange(1, 1, 300, 6).clearContent();
+  s.getRange(1, 1, 2, 5).setValues([[title, '', '', '', ''], ['Miejsce', 'Pseudonim', 'Punkty', 'Poprawne', 'Dane uczestnika']]);
+  var rows = arr.slice(0, 295).map(function (p, i) { return [i + 1, p.name, p.pts, p.good, uids[nkey_(p.name)] || '']; });
+  if (rows.length) s.getRange(3, 1, rows.length, 5).setValues(rows);
+}
+function updateLiveRank_(c, st) {
+  writeRankSheet_('Gra na żywo · ' + c.title + (c.sub ? ' · ' + c.sub : '') + ' · ' +
+    Utilities.formatDate(new Date(Number(String(st.game).slice(1)) || Date.now()), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'),
+    liveRank_(st.game), uidMap_(st.game));
+}
+// Zapis zakończonej gry na żywo do karty Historia wyników (raz na grę).
+function archiveLive_(game, c) {
+  if (!game) return 0;
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('arch_' + game)) return 0;
+  var arr = liveRank_(game);
+  if (!arr.length) return 0;
+  var uids = uidMap_(game), st = getState_(), nq = st.game === game ? st.ids.length : '';
+  var s = sh_(HIST);
+  if (!s) { s = SpreadsheetApp.getActive().insertSheet(HIST); s.appendRow(['Data gry', 'Tryb', 'Identyfikator gry', 'Quiz', 'Miejsce', 'Pseudonim', 'Dane uczestnika', 'Punkty', 'Poprawne', 'Liczba pytań']); s.setFrozenRows(1); }
+  var when = new Date(Number(String(game).slice(1)) || Date.now()), quiz = c.title + (c.sub ? ' · ' + c.sub : '');
+  var rows = arr.map(function (p, i) { return [when, 'Na żywo', game, quiz, i + 1, p.name, uids[nkey_(p.name)] || '', p.pts, p.good, nq]; });
+  s.getRange(s.getLastRow() + 1, 1, rows.length, 10).setValues(rows);
+  props.setProperty('arch_' + game, '1');
+  return rows.length;
+}
+function saveCurrentGame() {
+  var n = archiveLive_(getState_().game, cfg_());
+  SpreadsheetApp.getUi().alert(n ? 'Zapisano ' + n + ' wyników w karcie "' + HIST + '".' : 'Bieżąca gra jest już zapisana albo nie ma w niej odpowiedzi.');
+}
+
 function freeRanking_() {
   var s = sh_('Odpowiedzi'), last = s.getLastRow();
   if (last < 2) return [];
@@ -407,6 +462,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('Quiz')
     .addItem('Sprawdź pytania ze zdjęciem i muzyką', 'checkMedia')
     .addItem('Zestawienie wyników z danymi uczestników', 'idReport')
+    .addItem('Zapisz bieżącą grę na żywo w historii', 'saveCurrentGame')
     .addItem('Zakończ sezon Grand Prix i zarchiwizuj', 'archiveGp')
     .addItem('Usuń gracza / zwolnij pseudonim…', 'releaseName')
     .addToUi();
@@ -517,7 +573,9 @@ function doPost(e) {
   if (type === 'result') {                                                   // wynik w trybie dowolnym
     if (freeWindow_(c, 300000).status !== 'open') return json_({ ok: 0, closed: 1 });
     if (d.tok && !claim_('free', String(d.name).slice(0, 20), d.tok).ok) return json_({ ok: 0, taken: 1 });
-    sh_('Odpowiedzi').appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good)]);
+    var od = sh_('Odpowiedzi');
+    od.appendRow([new Date(), String(d.name).slice(0, 20), Number(d.pts), Number(d.good), String(d.id || '').slice(0, 60), c.title + (c.sub ? ' · ' + c.sub : '')]);
+    try { writeRankSheet_('Tryb dowolny · ' + c.title + (c.sub ? ' · ' + c.sub : '') + ' (najlepszy wynik gracza)', freeRanking_(), uidMap_('free')); } catch (e) {}
     return json_({ ok: 1 });
   }
   if (type === 'host') return json_(host_(d, c));
@@ -555,7 +613,7 @@ function host_(d, c) {
   var lock = LockService.getScriptLock(); lock.waitLock(5000);
   try {
     if (cmd === 'reset') {
-      var s = sh_(LIVE); if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 8).clearContent();
+      archiveLive_(st.game, c);   // poprzednia gra trafia do historii; odpowiedzi nie są kasowane
       st = { game: 'g' + now, phase: 'lobby', i: -1, ids: [], startedAt: 0 };
     } else if (cmd === 'start') {
       var ids = questions_(c.category).slice(0, c.nq || 999).map(function (q) { return q.id; });
@@ -575,5 +633,10 @@ function host_(d, c) {
     }
     setState_(st);
   } finally { lock.releaseLock(); }
+  try {
+    if (cmd === 'reset') writeRankSheet_('Gra na żywo · czekamy na graczy', [], {});
+    else if (cmd !== 'start' && cmd !== 'replay') updateLiveRank_(c, st);
+    if (st.phase === 'final') archiveLive_(st.game, c);
+  } catch (e) {}
   return { ok: 1, phase: st.phase, i: st.i };
 }
