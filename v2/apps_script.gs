@@ -60,6 +60,7 @@ function cfg_() {
     idInfo: String(c['Informacja przy polu danych'] || 'Nie wyświetlamy tego na ekranie. Podaj, jeśli chcesz być uwzględniony w nagrodach.'),
     freeLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Tryb dowolny: limit prób']),
     freeBest: String(c['Tryb dowolny: zasada punktów'] || '').indexOf('Tylko') !== 0,
+    random: c['Losowa kolejność pytań'] === 'Tak',
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
     freeTo: toDate_(c['Tryb dowolny: otwarty do']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
@@ -74,6 +75,23 @@ function cfg_() {
 }
 
 // Pytania aktywne, z wybranej kategorii. id = numer wiersza w arkuszu.
+// Pytania do gry: cała kategoria albo jej losowy wybór (Losowa kolejność pytań = Tak),
+// przycięte do liczby pytań w quizie. Ten sam seed daje ten sam zestaw i kolejność.
+function pick_(c, seedStr) {
+  var list = questions_(c.category);
+  if (c.random) {
+    var s = 0, str = String(seedStr) + '|' + c.category, i;
+    for (i = 0; i < str.length; i++) s = (s * 31 + str.charCodeAt(i)) % 4294967296;
+    function rnd() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }
+    for (i = list.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; }
+  }
+  return list.slice(0, c.nq || 999);
+}
+// Seed trybu dowolnego: wszyscy w danej sesji (okno „otwarty od” albo dany dzień) dostają ten sam zestaw.
+function freeSeed_(c) {
+  return c.freeFrom ? c.freeFrom.getTime() : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd');
+}
+
 function questions_(category) {
   var s = sh_('Pytania'), last = s.getLastRow();
   if (last < 2) return [];
@@ -576,7 +594,7 @@ function doGet(e) {
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
   if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, flimit: c.freeLimit, fbest: c.freeBest }, c));
   if (action === 'questions') {
-    return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: questions_(c.category).slice(0, c.nq || 999).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) }, c));
+    return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: pick_(c, freeSeed_(c)).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) }, c));
   }
   if (action === 'state') return json_(withMeta_(stateOut_(p), c));
   if (action === 'gp') return json_(withMeta_(gpPublic_(c, String(p.name || '').slice(0, 20)), c));
@@ -645,7 +663,7 @@ function host_(d, c) {
       archiveLive_(st.game, c);   // poprzednia gra trafia do historii; odpowiedzi nie są kasowane
       st = { game: 'g' + now, phase: 'lobby', i: -1, ids: [], startedAt: 0 };
     } else if (cmd === 'start') {
-      var ids = questions_(c.category).slice(0, c.nq || 999).map(function (q) { return q.id; });
+      var ids = pick_(c, 'g' + now).map(function (q) { return q.id; });
       if (!ids.length) return { ok: 0, error: 'brak pytań' };
       st.ids = ids; st.i = 0; st.phase = 'question'; st.startedAt = now;
     } else if (cmd === 'reveal') {
