@@ -32,6 +32,9 @@ with sync_playwright() as p:
     # ustawienia: tryb gry, liczba pytań, data
     lab = lambda t: pg.locator(".afield", has=pg.locator("label", has_text=t)).locator(".ain")
     lab("Tryb gry").select_option("Dowolny moment")
+    check("Nazwa quizu: rozwijana lista z opcjami", lab("Nazwa quizu").locator("option").count() >= 4)
+    check("Odblokowane pytania: rozwijana lista", lab("Odblokowane pytania (tryb dowolny)").locator("option").count() >= 4)
+    lab("Liczba pytań w quizie").select_option("__own__")
     lab("Liczba pytań w quizie").fill("3")
     lab("Tryb dowolny: otwarty od").fill("2026-12-01T18:30")
     check("licznik niezapisanych zmian = 3", "Niezapisane zmiany: 3" in pg.inner_text(".asave"))
@@ -40,7 +43,12 @@ with sync_playwright() as p:
     check("zapis do arkusza: Liczba pytań", str(setting("Liczba pytań w quizie")) == "3")
     check("zapis do arkusza: data", setting("Tryb dowolny: otwarty od") == "2026-12-01 18:30")
     check("pasek „Do gry trafi: 3”", "Do gry trafi: 3" in pg.inner_text(".astat"))
-    lab("Tryb gry").select_option("Na żywo"); lab("Liczba pytań w quizie").fill("5"); pg.click("#ssave"); pg.wait_for_selector("text=Ustawienia zapisane")
+    lab("Paleta kolorów").select_option("Jasna")
+    bg = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()")
+    check("podgląd palety w panelu (--bg=" + bg + ")", bg.upper() == "#F6F4EF")
+    pg.screenshot(path="/tmp/admin_jasna.png")
+    lab("Paleta kolorów").select_option("Morska")
+    lab("Tryb gry").select_option("Na żywo"); lab("Liczba pytań w quizie").select_option("5"); pg.click("#ssave"); pg.wait_for_selector("text=Ustawienia zapisane")
 
     # pytania
     pg.click(".atab[data-t=q]"); pg.wait_for_selector("#qlist")

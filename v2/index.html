@@ -116,7 +116,7 @@ select.ain{cursor:pointer}
 .qrow{display:grid;grid-template-columns:auto 54px 1fr auto;gap:12px;align-items:center;background:var(--card);border-radius:14px;padding:12px 12px 12px 14px}
 .qrow.off{opacity:.55}
 .qpos{text-align:center;display:grid;gap:4px;justify-items:center}.qpos small{color:var(--muted);font-size:12px}
-.ing{background:var(--ok);color:#0b2a17;font-weight:700;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.ing{background:var(--ok);color:var(--bg);font-weight:700;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px}
 .qbody{cursor:pointer;min-width:0}
 .qmeta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:3px}
 .qcat{color:var(--accent);font-weight:600}
@@ -140,8 +140,8 @@ select.ain{cursor:pointer}
 .aradio{display:flex;align-items:center;gap:6px;border-radius:10px;padding:8px 10px;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap;min-width:78px}
 .aradio.t2{color:#101010}.aradio input{width:18px;height:18px;margin:0}
 .aprev{background:var(--bg);border-radius:14px;padding:14px}
-.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ok);color:#0b2a17;padding:12px 20px;border-radius:12px;font-weight:700;z-index:30;transition:opacity .3s;opacity:0;pointer-events:none;max-width:90vw}
-.toast.bad{background:var(--bad);color:#2a0b0b}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ok);color:var(--bg);padding:12px 20px;border-radius:12px;font-weight:700;z-index:30;transition:opacity .3s;opacity:0;pointer-events:none;max-width:90vw}
+.toast.bad{background:var(--bad);color:var(--bg)}
 body.busy{cursor:progress}body.busy .wrap{opacity:.85}
 @media(max-width:720px){.abar{grid-template-columns:1fr 1fr}.abar #fq{grid-column:1/-1}.qrow{grid-template-columns:auto 1fr;}.qpos{display:none}.qact2{grid-column:1/-1;justify-content:flex-end}.aform{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
 </style>
@@ -349,13 +349,13 @@ function gpPage(){
 /* ---------- Panel prowadzącego (#admin): ustawienia i pytania ---------- */
 function adminPage(){
  document.body.className="admin";
- var D=null,pin=ls("pin"),tab=ls("admtab")||"set",dirty={},F={cat:"",q:"",st:"all"},busy=false;
+ var D=null,pin=ls("pin"),tab=ls("admtab")||"set",dirty={},own={},F={cat:"",q:"",st:"all"},busy=false;
  function api(o){o.type="admin";o.pin=pin;return postJ(o)}
  function toast(t,bad){var e=document.getElementById("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.appendChild(e)}e.className="toast"+(bad?" bad":"");e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(function(){e.style.opacity=0},bad?6000:2500)}
  function login(msg){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Panel prowadzącego</h1><div class="acard" style="max-width:420px;margin-top:24px"><label class="alab" for="apin">PIN prowadzącego</label><input class="ain" id="apin" type="password" inputmode="numeric" autocomplete="current-password" value=""><button class="btn" id="ago" style="margin-top:14px;width:100%">Zaloguj</button>'+(msg?'<p class="bad" style="margin:12px 0 0">'+esc(msg)+'</p>':'')+'</div>');
   var i=document.getElementById("apin");i.focus();function go(){pin=i.value.trim();if(!pin)return;load(true)}document.getElementById("ago").onclick=go;i.onkeydown=function(e){if(e.key==="Enter")go()}}
  function load(fromLogin){if(!D)show('<p class="sub">Ładowanie panelu…</p>');api({op:"load"}).then(function(d){if(!d.ok){if(d.error==="pin"){ls("pin","");login(fromLogin?"Nieprawidłowy PIN.":"")}else login(d.error);return}ls("pin",pin);take(d);draw()}).catch(function(){if(D)toast("Brak połączenia z serwerem.",1);else login("Brak połączenia z serwerem. Spróbuj ponownie.")})}
- function take(d){D=d;dirty={};if(d.title){QT=d.title;QS=d.sub||""}}
+ function take(d){D=d;dirty={};own={};applyPal(setting("Paleta kolorów"));if(d.title){QT=d.title;QS=d.sub||""}}
  function run(o,okMsg){if(busy)return Promise.resolve(false);busy=true;document.body.classList.add("busy");
   return api(o).then(function(d){busy=false;document.body.classList.remove("busy");if(!d.ok){if(d.error==="pin"){login("Sesja wygasła lub PIN został zmieniony. Zaloguj się ponownie.");return false}toast(d.error||"Nie udało się zapisać.",1);return false}take(d);draw();toast(okMsg||"Zapisano.");return true})
   .catch(function(){busy=false;document.body.classList.remove("busy");toast("Brak połączenia z serwerem. Zmiany nie zostały zapisane.",1);return false})}
@@ -372,9 +372,10 @@ function adminPage(){
   if(o.readonly)return /^https?:/.test(v)?'<a class="aval" href="'+esc(v)+'" target="_blank">'+esc(v)+'</a>':'<span class="aval">'+esc(v)+'</span>';
   if(o.kind==="datetime")return '<input class="ain" type="datetime-local" id="'+id+'" value="'+esc(dtIn(v))+'">';
   if(o.opts&&o.strict){var op=o.opts.slice();if(op.indexOf(v)<0)op.unshift(v);return '<select class="ain" id="'+id+'">'+op.map(function(x){return'<option'+(x===v?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select>'}
-  var dl=o.opts?'<datalist id="'+id+'_l">'+o.opts.map(function(x){return'<option value="'+esc(x)+'">'}).join("")+'</datalist>':"";
+  if(o.opts&&!own[o.label]){var op2=o.opts.slice();if(v!==""&&op2.indexOf(v)<0)op2.unshift(v);if(v===""&&op2.indexOf("")<0)op2.unshift("");return '<select class="ain" id="'+id+'">'+op2.map(function(x){return'<option value="'+esc(x)+'"'+(x===v?" selected":"")+'>'+(x===""?"(puste)":esc(x))+'</option>'}).join("")+'<option value="__own__">Własna wartość…</option></select>'}
+  var dl="";
   var pinF=o.label==="PIN prowadzącego";
-  return '<input class="ain" id="'+id+'" value="'+esc(v)+'"'+(o.opts?' list="'+id+'_l"':"")+(pinF?' inputmode="numeric" maxlength="8"':"")+(/\(s\)|Liczba|Limit/.test(o.label)&&!o.opts?' inputmode="numeric"':"")+'>'+dl}
+  return '<input class="ain" id="'+id+'" value="'+esc(v)+'"'+(pinF?' inputmode="numeric" maxlength="8"':"")+(/\(s\)|Liczba|Limit/.test(o.label)&&!o.opts?' inputmode="numeric"':"")+'>'+dl}
  function settingsHtml(){var h='<div class="agrid">',open=false,n=0;
   D.settings.forEach(function(o,k){if(o.section){if(open)h+='</div>';h+='<div class="acard"><h3 class="asec">'+esc(o.section)+'</h3>';open=true;return}
    if(!open){h+='<div class="acard">';open=true}
@@ -383,7 +384,7 @@ function adminPage(){
   n=Object.keys(dirty).length;
   h+='<div class="asave'+(n?" on":"")+'"><span>'+(n?'Niezapisane zmiany: <b>'+n+'</b>':'Wszystkie zmiany zapisane')+'</span><button class="btn ghost" id="sdrop"'+(n?"":" disabled")+'>Odrzuć</button><button class="btn" id="ssave"'+(n?"":" disabled")+'>Zapisz zmiany</button></div>';
   return h}
- function onField(o,el){var v=el.value;if(o.kind==="datetime")v=v?v.replace("T"," ").slice(0,16):"";if(v===o.value)delete dirty[o.label];else dirty[o.label]=v;
+ function onField(o,el){var v=el.value;if(o.kind==="datetime")v=v?v.replace("T"," ").slice(0,16):"";if(o.label==="Paleta kolorów")applyPal(v);if(v===o.value)delete dirty[o.label];else dirty[o.label]=v;
   var f=el.closest(".afield");if(f)f.classList.toggle("chg",dirty.hasOwnProperty(o.label));var n=Object.keys(dirty).length,b=document.querySelector(".asave");
   if(b){b.classList.toggle("on",!!n);b.querySelector("span").innerHTML=n?'Niezapisane zmiany: <b>'+n+'</b>':'Wszystkie zmiany zapisane';document.getElementById("ssave").disabled=!n;document.getElementById("sdrop").disabled=!n}}
  function saveSettings(){var ch=Object.keys(dirty).map(function(l){return{label:l,value:dirty[l]}});if(!ch.length)return;
@@ -437,8 +438,8 @@ function adminPage(){
   Array.prototype.forEach.call(document.querySelectorAll(".atab"),function(b){b.onclick=function(){if(tab==="set"&&Object.keys(dirty).length&&b.getAttribute("data-t")!=="set"&&!confirm("Masz niezapisane zmiany w ustawieniach. Przejść mimo to? Zmiany zostaną zachowane do czasu odświeżenia."))return;tab=b.getAttribute("data-t");ls("admtab",tab);draw()}});
   document.getElementById("arf").onclick=function(){if(Object.keys(dirty).length&&!confirm("Odrzucić niezapisane zmiany i pobrać stan z arkusza?"))return;load()};
   document.getElementById("aout").onclick=function(){ls("pin","");pin="";D=null;login("")};
-  if(tab==="set"){D.settings.forEach(function(o,k){var el=document.getElementById("f"+k);if(el){el.oninput=el.onchange=function(){onField(o,el)}}});
-   document.getElementById("ssave").onclick=saveSettings;document.getElementById("sdrop").onclick=function(){dirty={};draw()};return}
+  if(tab==="set"){D.settings.forEach(function(o,k){var el=document.getElementById("f"+k);if(el){el.oninput=el.onchange=function(){if(el.value==="__own__"){own[o.label]=1;draw();var n=document.getElementById("f"+k);if(n){n.focus();n.select()}return}onField(o,el)}}});
+   document.getElementById("ssave").onclick=saveSettings;document.getElementById("sdrop").onclick=function(){dirty={};own={};applyPal(setting("Paleta kolorów"));draw()};return}
   document.getElementById("fcat").onchange=function(){F.cat=this.value;draw()};document.getElementById("fst").onchange=function(){F.st=this.value;draw()};
   var fq=document.getElementById("fq"),ft=null;fq.oninput=function(){var v=this.value;clearTimeout(ft);ft=setTimeout(function(){F.q=v;draw();var e=document.getElementById("fq");e.focus();e.setSelectionRange(v.length,v.length)},300)};
   document.getElementById("qnew").onclick=function(){editor(null,0)};
