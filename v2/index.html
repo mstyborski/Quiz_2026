@@ -161,11 +161,11 @@ function freePlayer(Q,TIME,openStart,change,FL,FB){
 
 /* ---------- Telefon: tryb na żywo ---------- */
 function livePlayer(){
- var name=ls("qn"),joined=false,st=null,off=0,ans={},lastSig="",newGame=false;
+ var name=ls("qn"),joined=false,st=null,off=0,ans={},lastSig="",newGame=false,lastMe=null;
  function key(){return st.game+"|"+st.i}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
- function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">'+(newGame?'Nowa gra':'Podaj pseudonim')+'</h1>'+(newGame?'<div class="msg" style="margin:0 0 6px">Prowadzący rozpoczął nową grę. Aby wziąć w niej udział, dołącz ponownie.</div>':'')+'<input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("live",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;ls("jg",st&&st.game?st.game:"?");post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
+ function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">'+(newGame?'Gra zakończona':'Podaj pseudonim')+'</h1>'+(newGame?'<div class="msg" style="margin:0 0 10px">Prowadzący zakończył poprzednią grę.'+(lastMe?' Twój wynik: <b>'+lastMe.pts+' pkt</b>, miejsce '+lastMe.place+' z '+lastMe.of+'.':'')+' Dziękujemy za udział!<br>Jeśli chcesz zagrać w kolejnej grze, dołącz ponownie.</div>':'')+'<input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("live",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;ls("jg",st&&st.game?st.game:"?");post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
@@ -186,8 +186,8 @@ function livePlayer(){
   show(h);
   Array.prototype.forEach.call(document.querySelectorAll("[data-i]"),function(b){b.onclick=function(){answer(+b.getAttribute("data-i"))}})}
  function answer(k){if(!st||st.phase!=="question"||remaining()<=0)return;if(ans[key()]!==undefined&&(!st.change||ans[key()]===k))return;ans[key()]=k;saveAns();post({type:"answer",name:name,i:st.i,choice:k,ms:Date.now()+off-st.startedAt});lastSig="";draw()}
- function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){setT(d);off=d.now-Date.now();st=d;
-  if(joined&&d.game){var jg=ls("jg");if(jg==="?"||!jg)ls("jg",d.game);else if(jg!==d.game){joined=false;ls("joined","- ");newGame=true;lastSig=""}}
+ function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){setT(d);off=d.now-Date.now();var prev=st;st=d;
+  if(joined&&d.game){var jg=ls("jg");if(jg==="?"||!jg)ls("jg",d.game);else if(jg!==d.game){joined=false;ls("joined","- ");newGame=true;lastMe=prev&&prev.game===jg?prev.me:null;lastSig=""}}
   draw()}).catch(function(){})}
  setInterval(function(){var e=document.getElementById("tm");if(e&&st&&st.phase==="question"){e.textContent=remaining()+" s";if(remaining()<=0){lastSig="";draw()}}},300);
  load();
