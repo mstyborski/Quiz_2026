@@ -633,6 +633,7 @@ function doPost(e) {
     return json_({ ok: 1 });
   }
   if (type === 'host') return json_(host_(d, c));
+  if (type === 'admin') return json_(admin_(d, c));
   var st = getState_(), name = String(d.name || '').slice(0, 20);
   if (!name) return json_({ ok: 0 });
   if (type === 'join') {
@@ -702,4 +703,156 @@ function host_(d, c) {
     if (st.phase === 'final') archiveLive_(st.game, c);
   } catch (e) {}
   return { ok: 1, phase: st.phase, i: st.i };
+}
+
+
+// ======================= PANEL #admin =======================
+// Ustawienia (karta Sterowanie) i pytania (karta Pytania) edytowane z przeglądarki.
+// Dostęp: PIN prowadzącego; po 10 błędnych PIN-ach w ciągu 10 minut panel jest blokowany na 10 minut.
+var ADM_FIELDS = 11;   // Pytania: Kategoria, Pytanie, A, B, C, D, Poprawna, Aktywne, Typ, Źródło, Podpis
+
+function admin_(d, c) {
+  var cache = CacheService.getScriptCache(), fails = Number(cache.get('adm_fail') || 0);
+  if (fails >= 10) return { ok: 0, error: 'Zbyt wiele błędnych PIN-ów. Spróbuj ponownie za 10 minut.' };
+  if (String(d.pin) !== c.pin || !c.pin) { cache.put('adm_fail', String(fails + 1), 600); return { ok: 0, error: 'pin' }; }
+  var op = d.op;
+  try {
+    if (op === 'load') return admLoad_(c);
+    var lock = LockService.getScriptLock(); lock.waitLock(10000);
+    try {
+      var r;
+      if (op === 'set') r = admSet_(d.changes || []);
+      else if (op === 'qsave') r = admQSave_(d);
+      else if (op === 'qactive') r = admQActive_(d);
+      else if (op === 'qdelete') r = admQShift_(d, 'delete');
+      else if (op === 'qmove') r = admQShift_(d, 'move');
+      else return { ok: 0, error: 'Nieznana operacja' };
+      if (!r.ok) return r;
+    } finally { lock.releaseLock(); }
+    return admLoad_(cfg_());
+  } catch (e) { return { ok: 0, error: String(e && e.message || e) }; }
+}
+
+function admFmt_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  return v === null || v === undefined ? '' : String(v);
+}
+function admRuleOpts_(rule) {
+  if (!rule) return null;
+  try {
+    var t = String(rule.getCriteriaType()), v = rule.getCriteriaValues(), list = [];
+    if (t === 'VALUE_IN_LIST') list = v[0].map(String);
+    else if (t === 'VALUE_IN_RANGE') v[0].getValues().forEach(function (r) { r.forEach(function (x) { if (x !== '') list.push(String(x)); }); });
+    else return null;
+    return { opts: list, strict: !rule.getAllowInvalid() };
+  } catch (e) { return null; }
+}
+function admSettings_() {
+  var s = sh_('Sterowanie'), rg = s.getRange('A2:B80'), vals = rg.getValues(), dv = rg.getDataValidations(), out = [], sec = '';
+  vals.forEach(function (r, k) {
+    var label = String(r[0]).trim();
+    if (!label) return;
+    if (label.indexOf('▸') === 0) { sec = label.replace(/^▸\s*/, ''); out.push({ section: sec }); return; }
+    var o = { label: label, value: admFmt_(r[1]), row: k + 2 }, ru = admRuleOpts_(dv[k][1]);
+    if (ru) { o.opts = ru.opts; o.strict = ru.strict; }
+    if (/otwarty (od|do)/.test(label)) o.kind = 'datetime';
+    if (/^ADRESY/.test(sec)) o.readonly = true;
+    out.push(o);
+  });
+  return out;
+}
+function admCategories_() {
+  var k = sh_('Kategorie'), out = [];
+  if (k && k.getLastRow() >= 2) k.getRange(2, 1, k.getLastRow() - 1, 1).getValues().forEach(function (r) { var v = String(r[0]).trim(); if (v && v !== 'Wszystkie') out.push(v); });
+  return out;
+}
+function admQuestions_() {
+  var s = sh_('Pytania'), last = s.getLastRow(), out = [];
+  if (last < 2) return out;
+  s.getRange(2, 1, last - 1, ADM_FIELDS).getValues().forEach(function (r, k) {
+    if (r.every(function (x) { return x === ''; })) return;
+    out.push({ row: k + 2, v: r.map(admFmt_) });
+  });
+  return out;
+}
+function admGameActive_() { var st = getState_(); return ['question', 'reveal', 'ranking', 'break'].indexOf(st.phase) >= 0; }
+function admLoad_(c) {
+  var st = getState_(), media = [];
+  try { media = Object.keys(folderMap_(c)).filter(function (n) { return /\.[a-z0-9]{2,5}$/.test(n); }).sort(); } catch (e) {}
+  return { ok: 1, settings: admSettings_(), categories: admCategories_(), questions: admQuestions_(), media: media,
+    game: { phase: st.phase, i: st.i, n: st.ids.length, active: admGameActive_() },
+    use: pick_(c, 'g' + Date.now()).map(function (q) { return q.id; }), random: c.random, title: c.title, sub: c.sub };
+}
+
+function admSet_(changes) {
+  var all = admSettings_(), by = {};
+  all.forEach(function (o) { if (o.label) by[o.label] = o; });
+  var s = sh_('Sterowanie');
+  for (var i = 0; i < changes.length; i++) {
+    var ch = changes[i], o = by[ch.label], v = String(ch.value === undefined ? '' : ch.value).trim();
+    if (!o || o.readonly) return { ok: 0, error: 'Nie można zmienić ustawienia: ' + ch.label };
+    if (o.strict && o.opts && o.opts.indexOf(v) < 0) return { ok: 0, error: 'Niedozwolona wartość „' + v + '” dla: ' + ch.label };
+    if (o.label === 'PIN prowadzącego' && !/^\d{4,8}$/.test(v)) return { ok: 0, error: 'PIN musi mieć od 4 do 8 cyfr.' };
+    if (o.kind === 'datetime' && v && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(v)) return { ok: 0, error: 'Data w formacie RRRR-MM-DD GG:MM: ' + ch.label };
+  }
+  changes.forEach(function (ch) { s.getRange(by[ch.label].row, 2).setValue(String(ch.value === undefined ? '' : ch.value).trim()); });
+  CacheService.getScriptCache().removeAll(['rk', 'st', 'stfull', 'fm']);
+  return { ok: 1 };
+}
+
+// Ochrona przed edycją niewłaściwego wiersza: klient przesyła treść pytania, którą widział.
+function admCheckRow_(s, row, orig) {
+  row = Number(row);
+  if (!(row >= 2) || row > s.getLastRow()) return 'Pytanie nie istnieje (wiersz ' + row + ').';
+  if (String(s.getRange(row, 2).getValue()) !== String(orig)) return 'Pytanie w wierszu ' + row + ' zmieniło się w międzyczasie. Odśwież listę.';
+  return '';
+}
+function admQSave_(d) {
+  var s = sh_('Pytania'), v = (d.v || []).slice(0, ADM_FIELDS).map(function (x) { return String(x === undefined ? '' : x).trim(); });
+  while (v.length < ADM_FIELDS) v.push('');
+  if (!v[0]) return { ok: 0, error: 'Podaj kategorię.' };
+  if (!v[1]) return { ok: 0, error: 'Podaj treść pytania.' };
+  for (var k = 2; k <= 5; k++) if (!v[k]) return { ok: 0, error: 'Uzupełnij odpowiedź ' + 'ABCD'[k - 2] + '.' };
+  v[6] = v[6].toUpperCase(); if ('ABCD'.indexOf(v[6]) < 0 || v[6].length !== 1) return { ok: 0, error: 'Wskaż poprawną odpowiedź.' };
+  v[7] = v[7].toUpperCase() === 'NIE' ? 'NIE' : 'TAK';
+  if (['Tekst', 'Zdjęcie', 'Muzyka'].indexOf(v[8]) < 0) v[8] = 'Tekst';
+  if (v[8] !== 'Tekst' && !v[9]) return { ok: 0, error: 'Pytanie typu ' + v[8] + ' wymaga źródła (plik, adres albo „wykonawca – tytuł”).' };
+  var row = Number(d.row) || 0;
+  if (row) { var e = admCheckRow_(s, row, d.orig); if (e) return { ok: 0, error: e }; }
+  else {
+    var after = Number(d.after) || 0;
+    if (after >= 2 && after < s.getLastRow()) {
+      if (admGameActive_()) return { ok: 0, error: 'W trakcie gry na żywo nowe pytanie można dodać tylko na końcu listy.' };
+      s.insertRowAfter(after); row = after + 1;
+    } else row = s.getLastRow() + 1;
+  }
+  // tekst zaczynający się od = lub + nie może zostać potraktowany jak formuła
+  s.getRange(row, 1, 1, ADM_FIELDS).setValues([v.map(function (x) { return /^[=+]/.test(x) ? "'" + x : x; })]);
+  admAddCategory_(v[0]);
+  return { ok: 1, row: row };
+}
+function admAddCategory_(cat) {
+  if (admCategories_().indexOf(cat) >= 0) return;
+  var k = sh_('Kategorie'); if (!k) return;
+  if (k.getLastRow() < 20) k.getRange(k.getLastRow() + 1, 1).setValue(cat);   // walidacja w arkuszu sięga A20
+}
+function admQActive_(d) {
+  var s = sh_('Pytania'), items = d.items || [], val = String(d.value).toUpperCase() === 'NIE' ? 'NIE' : 'TAK';
+  for (var i = 0; i < items.length; i++) { var e = admCheckRow_(s, items[i].row, items[i].orig); if (e) return { ok: 0, error: e }; }
+  items.forEach(function (it) { s.getRange(Number(it.row), 8).setValue(val); });
+  return { ok: 1 };
+}
+// Usuwanie i przesuwanie zmienia numery wierszy (= id pytań), więc jest zablokowane w trakcie gry na żywo.
+function admQShift_(d, kind) {
+  if (admGameActive_()) return { ok: 0, error: 'Trwa gra na żywo. Usuwanie i zmiana kolejności pytań są możliwe w lobby albo po wyniku końcowym.' };
+  var s = sh_('Pytania'), row = Number(d.row), e = admCheckRow_(s, row, d.orig);
+  if (e) return { ok: 0, error: e };
+  if (kind === 'delete') { s.deleteRow(row); return { ok: 1 }; }
+  // przeniesienie pytania na miejsce wiersza „to” (pozostałe przesuwają się o jeden)
+  var to = Number(d.to) || (row + (Number(d.dir) < 0 ? -1 : 1));
+  if (to < 2 || to > s.getLastRow() || to === row) return { ok: 1 };
+  var lo = Math.min(row, to), n = Math.abs(to - row) + 1, rg = s.getRange(lo, 1, n, ADM_FIELDS), b = rg.getValues();
+  if (row < to) b.push(b.shift()); else b.unshift(b.pop());
+  rg.setValues(b);
+  return { ok: 1 };
 }

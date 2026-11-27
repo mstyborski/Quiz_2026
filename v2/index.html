@@ -83,6 +83,67 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .qimg{display:block;max-width:100%;max-height:30vh;margin:16px auto;border-radius:14px;object-fit:contain}
 .corner{position:fixed;right:20px;top:20px;background:#fff;padding:8px;border-radius:10px}
 .katex{font-size:1.05em}.tile .tx{display:block;white-space:normal}.tile .katex{color:inherit;font-size:1.15em}.big .katex{font-size:1em}
+/* Panel prowadzącego (#admin) */
+.admin .wrap{max-width:1180px;padding-bottom:110px}
+.admin .big{font-size:clamp(22px,3.2vw,34px)}
+.asub{color:var(--muted);font-weight:400}
+.ahead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.ahead h2{font-size:22px}
+.alinks{display:flex;gap:8px;flex-wrap:wrap}
+.alinks .btn,.abar .btn{font-size:15px;padding:10px 14px;text-decoration:none;display:inline-block}
+.astat{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px}.astat .chip{font-size:15px}
+.atabs{display:flex;gap:4px;margin:20px 0 18px;border-bottom:2px solid var(--border)}
+.atab{background:none;border:0;color:var(--muted);font-weight:700;font-size:17px;padding:10px 18px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+.atab.on{color:var(--text);border-bottom-color:var(--accent)}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;align-items:start}
+.acard{background:var(--card);border-radius:16px;padding:18px 18px 8px}
+.asec{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.afield{margin:0 0 12px;border-left:3px solid transparent;padding-left:8px;margin-left:-11px}
+.afield.chg{border-left-color:var(--accent)}
+.alab{display:block;font-size:14px;color:var(--muted);margin:0 0 5px;font-weight:600}.alab small{font-weight:400}
+.ain{width:100%;padding:10px 12px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:16px}
+.ain:focus{outline:none;border-color:var(--accent)}
+textarea.ain{resize:vertical;min-height:70px}
+select.ain{cursor:pointer}
+.aval{font-size:15px;word-break:break-all;color:var(--text)}
+.asave{position:fixed;left:0;right:0;bottom:0;display:flex;gap:12px;justify-content:flex-end;align-items:center;background:var(--hostbar);padding:12px 20px;transform:translateY(100%);transition:transform .2s}
+.asave.on{transform:none}.asave span{margin-right:auto;font-size:16px}
+.asave .btn{font-size:16px;padding:11px 18px}
+.btn:disabled{opacity:.45;cursor:default}
+.abar{display:grid;grid-template-columns:minmax(180px,260px) minmax(150px,200px) 1fr auto;gap:10px;align-items:center}
+.ainfo{font-size:15px;margin:12px 0 0}
+#qlist{margin-top:14px;display:grid;gap:8px}
+.qrow{display:grid;grid-template-columns:auto 54px 1fr auto;gap:12px;align-items:center;background:var(--card);border-radius:14px;padding:12px 12px 12px 14px}
+.qrow.off{opacity:.55}
+.qpos{text-align:center;display:grid;gap:4px;justify-items:center}.qpos small{color:var(--muted);font-size:12px}
+.ing{background:var(--ok);color:#0b2a17;font-weight:700;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.qbody{cursor:pointer;min-width:0}
+.qmeta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:3px}
+.qcat{color:var(--accent);font-weight:600}
+.qtext{font-size:17px;font-weight:600;line-height:1.3}
+.qans{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--muted);margin-top:5px}
+.qans .good{color:var(--ok);font-weight:700}
+.qact2{display:flex;gap:4px}
+.ib{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px;line-height:1}
+.ib:disabled{opacity:.3;cursor:default}.ib[data-a=del]:hover{border-color:var(--bad);color:var(--bad)}
+.sw{position:relative;display:inline-block;width:46px;height:26px;cursor:pointer}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw span{position:absolute;inset:0;background:var(--border);border-radius:13px;transition:.2s}
+.sw span:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--ok)}.sw input:checked+span:before{transform:translateX(20px)}
+.sw input:focus-visible+span{outline:2px solid var(--accent)}
+.aover{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto;z-index:20}
+.amodal{background:var(--card);border-radius:18px;padding:20px 22px;width:min(820px,100%);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.aform{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.aform .wide{grid-column:1/-1}
+.aform .afield{margin-left:0;padding-left:0;border:0}
+.arow{display:flex;gap:10px;align-items:center}
+.aradio{display:flex;align-items:center;gap:6px;border-radius:10px;padding:8px 10px;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap;min-width:78px}
+.aradio.t2{color:#101010}.aradio input{width:18px;height:18px;margin:0}
+.aprev{background:var(--bg);border-radius:14px;padding:14px}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ok);color:#0b2a17;padding:12px 20px;border-radius:12px;font-weight:700;z-index:30;transition:opacity .3s;opacity:0;pointer-events:none;max-width:90vw}
+.toast.bad{background:var(--bad);color:#2a0b0b}
+body.busy{cursor:progress}body.busy .wrap{opacity:.85}
+@media(max-width:720px){.abar{grid-template-columns:1fr 1fr}.abar #fq{grid-column:1/-1}.qrow{grid-template-columns:auto 1fr;}.qpos{display:none}.qact2{grid-column:1/-1;justify-content:flex-end}.aform{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Inter:wght@400;600&display=swap">
 </head>
@@ -109,7 +170,7 @@ var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>';fit();Array.prototype.forEach.call(app.querySelectorAll('img'),function(i){if(!i.complete)i.onload=fit});if(/\$|\\\(|\\\[/.test(h))tex(app)}
 /* Ekran z pytaniem ma się zmieścić bez przewijania: w razie potrzeby całość jest proporcjonalnie zmniejszana (do 55%). */
-function fit(){var w=app.querySelector('.wrap');if(!w)return;w.style.zoom='';if(!w.querySelector('.tiles,.btns,.qimg'))return;var z=1;while(z>0.55&&w.getBoundingClientRect().height>window.innerHeight+2){z=Math.round((z-0.05)*100)/100;w.style.zoom=z}}
+function fit(){var w=app.querySelector('.wrap');if(!w||document.body.classList.contains('admin'))return;w.style.zoom='';if(!w.querySelector('.tiles,.btns,.qimg'))return;var z=1;while(z>0.55&&w.getBoundingClientRect().height>window.innerHeight+2){z=Math.round((z-0.05)*100)/100;w.style.zoom=z}}
 window.addEventListener('resize',function(){fit()});
 /* LaTeX: $...$, $$...$$, \(...\), \[...\] przez KaTeX (ładowany tylko gdy potrzebny) */
 var KX="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/",kxP=null;
@@ -285,9 +346,117 @@ function gpPage(){
    show('<p class="eyebrow">Runda '+round+' · zakończona</p><h1 class="big">'+esc(name)+': '+r.pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+r.good+' z '+r.n+'. Próba nr '+r.attempt+'.<br>Klasyfikacja generalna: miejsce <b>'+r.place+'</b> z '+r.of+', razem <b>'+r.total+'</b> pkt.</div>'+det+'<p><button class="btn" id="hm" style="margin-top:20px">'+(r.left>0?'Zagraj jeszcze raz / klasyfikacja':'Klasyfikacja')+'</button></p>');document.getElementById("hm").onclick=home}).catch(function(){show('<p class="eyebrow">Grand Prix</p><h1 class="big">Brak połączenia</h1><div class="msg">Wynik nie został jeszcze zapisany.</div><p><button class="btn" id="rt" style="margin-top:20px">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=send})}
  home()}
 
+/* ---------- Panel prowadzącego (#admin): ustawienia i pytania ---------- */
+function adminPage(){
+ document.body.className="admin";
+ var D=null,pin=ls("pin"),tab=ls("admtab")||"set",dirty={},F={cat:"",q:"",st:"all"},busy=false;
+ function api(o){o.type="admin";o.pin=pin;return postJ(o)}
+ function toast(t,bad){var e=document.getElementById("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.appendChild(e)}e.className="toast"+(bad?" bad":"");e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(function(){e.style.opacity=0},bad?6000:2500)}
+ function login(msg){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Panel prowadzącego</h1><div class="acard" style="max-width:420px;margin-top:24px"><label class="alab" for="apin">PIN prowadzącego</label><input class="ain" id="apin" type="password" inputmode="numeric" autocomplete="current-password" value=""><button class="btn" id="ago" style="margin-top:14px;width:100%">Zaloguj</button>'+(msg?'<p class="bad" style="margin:12px 0 0">'+esc(msg)+'</p>':'')+'</div>');
+  var i=document.getElementById("apin");i.focus();function go(){pin=i.value.trim();if(!pin)return;load(true)}document.getElementById("ago").onclick=go;i.onkeydown=function(e){if(e.key==="Enter")go()}}
+ function load(fromLogin){if(!D)show('<p class="sub">Ładowanie panelu…</p>');api({op:"load"}).then(function(d){if(!d.ok){if(d.error==="pin"){ls("pin","");login(fromLogin?"Nieprawidłowy PIN.":"")}else login(d.error);return}ls("pin",pin);take(d);draw()}).catch(function(){if(D)toast("Brak połączenia z serwerem.",1);else login("Brak połączenia z serwerem. Spróbuj ponownie.")})}
+ function take(d){D=d;dirty={};if(d.title){QT=d.title;QS=d.sub||""}}
+ function run(o,okMsg){if(busy)return Promise.resolve(false);busy=true;document.body.classList.add("busy");
+  return api(o).then(function(d){busy=false;document.body.classList.remove("busy");if(!d.ok){if(d.error==="pin"){login("Sesja wygasła lub PIN został zmieniony. Zaloguj się ponownie.");return false}toast(d.error||"Nie udało się zapisać.",1);return false}take(d);draw();toast(okMsg||"Zapisano.");return true})
+  .catch(function(){busy=false;document.body.classList.remove("busy");toast("Brak połączenia z serwerem. Zmiany nie zostały zapisane.",1);return false})}
+ var PH={lobby:"lobby (czekamy na start)",question:"pytanie na ekranie",reveal:"odpowiedź odsłonięta",ranking:"ranking",break:"przerwa",final:"wynik końcowy"};
+ function setting(l){var r=null;D.settings.forEach(function(o){if(o.label===l)r=o});return r?r.value:""}
+ function head(){var g=D.game,live=setting("Tryb gry")==="Na żywo";
+  return '<div class="ahead"><div><p class="eyebrow">Panel prowadzącego</p><h1 class="big">'+esc(QT)+(QS?' <span class="asub">· '+esc(QS)+'</span>':'')+'</h1></div><div class="alinks"><a class="btn ghost" href="#tv" target="_blank">Ekran TV ↗</a><a class="btn ghost" href="'+esc(pageUrl())+'" target="_blank">Strona uczestnika ↗</a><button class="btn ghost" id="arf" title="Pobierz aktualny stan z arkusza">Odśwież</button><button class="btn ghost" id="aout">Wyloguj</button></div></div>'+
+  '<div class="astat"><span class="chip">Tryb: <b>'+esc(setting("Tryb gry"))+'</b></span>'+(live?'<span class="chip">Gra na żywo: <b>'+esc(PH[g.phase]||g.phase)+'</b>'+(g.n&&g.i>=0?' · pytanie '+(g.i+1)+' z '+g.n:'')+'</span>':'')+'<span class="chip">Kategoria: <b>'+esc(setting("Kategoria do gry"))+'</b></span><span class="chip">Do gry trafi: <b>'+D.use.length+'</b> '+plPyt(D.use.length)+'</span></div>'+
+  '<div class="atabs"><button class="atab'+(tab==="set"?" on":"")+'" data-t="set">Ustawienia</button><button class="atab'+(tab==="q"?" on":"")+'" data-t="q">Pytania ('+D.questions.length+')</button></div>'}
+ function draw(){var h=head()+(tab==="set"?settingsHtml():questionsHtml());show(h);wire();if(tab==="q")tex(document.getElementById("qlist"))}
+ /* --- ustawienia --- */
+ function dtIn(v){return v?v.replace(" ","T"):""}
+ function ctl(o,id){var v=dirty.hasOwnProperty(o.label)?dirty[o.label]:o.value;
+  if(o.readonly)return /^https?:/.test(v)?'<a class="aval" href="'+esc(v)+'" target="_blank">'+esc(v)+'</a>':'<span class="aval">'+esc(v)+'</span>';
+  if(o.kind==="datetime")return '<input class="ain" type="datetime-local" id="'+id+'" value="'+esc(dtIn(v))+'">';
+  if(o.opts&&o.strict){var op=o.opts.slice();if(op.indexOf(v)<0)op.unshift(v);return '<select class="ain" id="'+id+'">'+op.map(function(x){return'<option'+(x===v?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select>'}
+  var dl=o.opts?'<datalist id="'+id+'_l">'+o.opts.map(function(x){return'<option value="'+esc(x)+'">'}).join("")+'</datalist>':"";
+  var pinF=o.label==="PIN prowadzącego";
+  return '<input class="ain" id="'+id+'" value="'+esc(v)+'"'+(o.opts?' list="'+id+'_l"':"")+(pinF?' inputmode="numeric" maxlength="8"':"")+(/\(s\)|Liczba|Limit/.test(o.label)&&!o.opts?' inputmode="numeric"':"")+'>'+dl}
+ function settingsHtml(){var h='<div class="agrid">',open=false,n=0;
+  D.settings.forEach(function(o,k){if(o.section){if(open)h+='</div>';h+='<div class="acard"><h3 class="asec">'+esc(o.section)+'</h3>';open=true;return}
+   if(!open){h+='<div class="acard">';open=true}
+   var id="f"+k,ch=dirty.hasOwnProperty(o.label);h+='<div class="afield'+(ch?" chg":"")+'"><label class="alab" for="'+id+'">'+esc(o.label)+'</label>'+ctl(o,id)+'</div>'});
+  if(open)h+='</div>';h+='</div>';
+  n=Object.keys(dirty).length;
+  h+='<div class="asave'+(n?" on":"")+'"><span>'+(n?'Niezapisane zmiany: <b>'+n+'</b>':'Wszystkie zmiany zapisane')+'</span><button class="btn ghost" id="sdrop"'+(n?"":" disabled")+'>Odrzuć</button><button class="btn" id="ssave"'+(n?"":" disabled")+'>Zapisz zmiany</button></div>';
+  return h}
+ function onField(o,el){var v=el.value;if(o.kind==="datetime")v=v?v.replace("T"," ").slice(0,16):"";if(v===o.value)delete dirty[o.label];else dirty[o.label]=v;
+  var f=el.closest(".afield");if(f)f.classList.toggle("chg",dirty.hasOwnProperty(o.label));var n=Object.keys(dirty).length,b=document.querySelector(".asave");
+  if(b){b.classList.toggle("on",!!n);b.querySelector("span").innerHTML=n?'Niezapisane zmiany: <b>'+n+'</b>':'Wszystkie zmiany zapisane';document.getElementById("ssave").disabled=!n;document.getElementById("sdrop").disabled=!n}}
+ function saveSettings(){var ch=Object.keys(dirty).map(function(l){return{label:l,value:dirty[l]}});if(!ch.length)return;
+  var np=dirty["PIN prowadzącego"];if(np!==undefined&&!confirm("Zmieniasz PIN prowadzącego na "+np+". Nowy PIN będzie potrzebny do panelu i ekranu TV. Kontynuować?"))return;
+  run({op:"set",changes:ch},"Ustawienia zapisane.").then(function(ok){if(ok&&np!==undefined){pin=np;ls("pin",np)}})}
+ /* --- pytania --- */
+ function cats(){var c=D.categories.slice();D.questions.forEach(function(q){if(q.v[0]&&c.indexOf(q.v[0])<0)c.push(q.v[0])});return c}
+ function visible(){var s=F.q.toLowerCase();return D.questions.filter(function(q){if(F.cat&&q.v[0]!==F.cat)return false;if(F.st==="on"&&q.v[7]!=="TAK")return false;if(F.st==="off"&&q.v[7]==="TAK")return false;if(F.st==="game"&&D.use.indexOf(q.row)<0)return false;if(s&&q.v.slice(1,6).concat(q.v[9]).join(" ").toLowerCase().indexOf(s)<0)return false;return true})}
+ var TI={"Zdjęcie":"🖼","Muzyka":"🎵"};
+ function questionsHtml(){var cs=cats(),cnt={},vis=visible();D.questions.forEach(function(q){cnt[q.v[0]]=(cnt[q.v[0]]||0)+1});
+  var h='<div class="abar"><select class="ain" id="fcat"><option value="">Wszystkie kategorie ('+D.questions.length+')</option>'+cs.map(function(c){return'<option value="'+esc(c)+'"'+(F.cat===c?" selected":"")+'>'+esc(c)+' ('+(cnt[c]||0)+')</option>'}).join("")+'</select>'+
+   '<select class="ain" id="fst"><option value="all">Wszystkie</option><option value="on"'+(F.st==="on"?" selected":"")+'>Tylko aktywne</option><option value="off"'+(F.st==="off"?" selected":"")+'>Tylko nieaktywne</option><option value="game"'+(F.st==="game"?" selected":"")+'>Tylko w bieżącej grze</option></select>'+
+   '<input class="ain" id="fq" type="search" placeholder="Szukaj w treści i odpowiedziach" value="'+esc(F.q)+'"><button class="btn" id="qnew">+ Nowe pytanie</button></div>';
+  h+='<p class="sub ainfo">Do gry trafia <b>'+D.use.length+'</b> aktywnych pytań z kategorii „'+esc(setting("Kategoria do gry"))+'”'+(D.random?' (w losowej kolejności, numery „w grze” są poglądowe)':', w kolejności z listy')+'. Numer w zielonym kółku to pozycja pytania w quizie.'+(D.game.active?' <span class="bad">Trwa gra na żywo: usuwanie i zmiana kolejności są zablokowane, a zmiana treści bieżącego pytania będzie od razu widoczna.</span>':'')+'</p>';
+  if(vis.length&&vis.length<D.questions.length)h+='<p class="sub ainfo">Wyświetlono '+vis.length+' z '+D.questions.length+'. Strzałki przesuwają pytanie względem sąsiednich pytań na tej liście.</p>';
+  h+='<div id="qlist">'+(vis.length?vis.map(function(q,k){var v=q.v,on=v[7]==="TAK",gi=D.use.indexOf(q.row),c="ABCD".indexOf(v[6]);
+   return '<div class="qrow'+(on?"":" off")+'" data-r="'+q.row+'"><label class="sw" title="'+(on?"Aktywne: kliknij, aby wyłączyć":"Nieaktywne: kliknij, aby włączyć")+'"><input type="checkbox" class="qact"'+(on?" checked":"")+'><span></span></label>'+
+    '<div class="qpos">'+(gi>=0?'<span class="ing" title="Pozycja w quizie">'+(gi+1)+'</span>':'')+'<small>w. '+q.row+'</small></div>'+
+    '<div class="qbody" title="Kliknij, aby edytować"><div class="qmeta"><span class="qcat">'+esc(v[0])+'</span>'+(TI[v[8]]?'<span>'+TI[v[8]]+' '+esc(v[8])+(v[9]?': '+esc(v[9]):'')+'</span>':'')+'</div><div class="qtext">'+esc(v[1])+'</div><div class="qans">'+[2,3,4,5].map(function(j){return'<span class="'+(j-2===c?"good":"")+'"><b>'+LET[j-2]+'.</b> '+esc(v[j])+'</span>'}).join("")+'</div></div>'+
+    '<div class="qact2"><button class="ib" data-a="up" title="W górę"'+(k===0?" disabled":"")+'>↑</button><button class="ib" data-a="down" title="W dół"'+(k===vis.length-1?" disabled":"")+'>↓</button><button class="ib" data-a="ins" title="Nowe pytanie pod tym">＋</button><button class="ib" data-a="del" title="Usuń pytanie">✕</button></div></div>'}).join(""):'<div class="msg">Brak pytań spełniających kryteria.</div>')+'</div>';
+  return h}
+ function byRow(r){var x=null;D.questions.forEach(function(q){if(q.row===r)x=q});return x}
+ function editor(q,after){var v=q?q.v.slice():[F.cat||setting("Kategoria do gry")!=="Wszystkie"&&setting("Kategoria do gry")||"","","","","","","A","TAK","Tekst","",""];
+  var ov=document.createElement("div");ov.className="aover";
+  ov.innerHTML='<div class="amodal" role="dialog" aria-label="Edycja pytania"><div class="ahead" style="margin:0 0 10px"><h2>'+(q?'Pytanie z wiersza '+q.row:'Nowe pytanie'+(after?' (pod wierszem '+after+')':' (na końcu listy)'))+'</h2><button class="ib" id="ex" title="Zamknij">✕</button></div>'+
+   '<div class="aform"><div class="afield"><label class="alab" for="e0">Kategoria</label><input class="ain" id="e0" list="e0l" value="'+esc(v[0])+'"><datalist id="e0l">'+cats().map(function(c){return'<option value="'+esc(c)+'">'}).join("")+'</datalist></div>'+
+   '<div class="afield"><label class="alab" for="e7">Aktywne</label><select class="ain" id="e7"><option'+(v[7]==="TAK"?" selected":"")+'>TAK</option><option'+(v[7]!=="TAK"?" selected":"")+'>NIE</option></select></div>'+
+   '<div class="afield wide"><label class="alab" for="e1">Treść pytania <small>(wzory: $…$ lub $$…$$)</small></label><textarea class="ain" id="e1" rows="3">'+esc(v[1])+'</textarea></div>'+
+   [0,1,2,3].map(function(j){return'<div class="afield wide arow"><label class="aradio t'+j+'" title="Poprawna odpowiedź"><input type="radio" name="ec" value="'+LET[j]+'"'+(v[6]===LET[j]?" checked":"")+'><span>'+SYM[j]+' '+LET[j]+'</span></label><input class="ain" id="e'+(j+2)+'" value="'+esc(v[j+2])+'" placeholder="Odpowiedź '+LET[j]+'"></div>'}).join("")+
+   '<p class="sub wide" style="font-size:14px;margin:0">Zaznacz kółkiem poprawną odpowiedź.</p>'+
+   '<div class="afield"><label class="alab" for="e8">Typ</label><select class="ain" id="e8">'+["Tekst","Zdjęcie","Muzyka"].map(function(t){return'<option'+(v[8]===t?" selected":"")+'>'+t+'</option>'}).join("")+'</select></div>'+
+   '<div class="afield"><label class="alab" for="e9">Źródło <small>(plik z folderu, adres lub „wykonawca – tytuł”)</small></label><input class="ain" id="e9" list="e9l" value="'+esc(v[9])+'"><datalist id="e9l">'+(D.media||[]).map(function(m){return'<option value="'+esc(m)+'">'}).join("")+'</datalist></div>'+
+   '<div class="afield wide"><label class="alab" for="e10">Podpis po odpowiedzi <small>(opcjonalnie)</small></label><input class="ain" id="e10" value="'+esc(v[10])+'"></div></div>'+
+   '<p class="alab" style="margin-top:16px">Podgląd</p><div class="aprev" id="eprev"></div>'+
+   '<div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" id="ecan">Anuluj</button><button class="btn" id="esave">'+(q?'Zapisz':'Dodaj pytanie')+'</button></div></div>';
+  document.body.appendChild(ov);
+  function val(){var o=[];for(var j=0;j<=10;j++){var e=document.getElementById("e"+j);o[j]=e?e.value:""}var r=ov.querySelector('input[name=ec]:checked');o[6]=r?r.value:"";return o}
+  function srcVis(){document.getElementById("e9").closest(".afield").style.display=document.getElementById("e8").value==="Tekst"?"none":""}
+  var pt=null;function prev(){clearTimeout(pt);pt=setTimeout(function(){var o=val(),c="ABCD".indexOf(o[6]),el=document.getElementById("eprev");if(!el)return;
+   el.innerHTML='<div class="big" style="font-size:22px">'+esc(o[1]||"(treść pytania)")+'</div>'+tilesHtml({o:[o[2],o[3],o[4],o[5]]},{dim:[0,1,2,3].map(function(j){return c>=0&&j!==c?1:0})});if(/\$|\\\(|\\\[/.test(el.innerHTML))tex(el)},250)}
+  ov.addEventListener("input",prev);ov.addEventListener("change",function(){srcVis();prev()});srcVis();prev();
+  var dirtyE=false;ov.addEventListener("input",function(){dirtyE=true});
+  function close(force){if(!force&&dirtyE&&!confirm("Porzucić niezapisane zmiany w pytaniu?"))return;ov.remove();document.removeEventListener("keydown",esck)}
+  function esck(e){if(e.key==="Escape")close()}document.addEventListener("keydown",esck);
+  document.getElementById("ex").onclick=function(){close()};document.getElementById("ecan").onclick=function(){close()};
+  ov.onclick=function(e){if(e.target===ov)close()};
+  document.getElementById("esave").onclick=function(){var o=val();run({op:"qsave",row:q?q.row:0,orig:q?q.v[1]:"",after:after||0,v:o},q?"Pytanie zapisane.":"Pytanie dodane.").then(function(ok){if(ok)close(true)})};
+  setTimeout(function(){document.getElementById(q?"e1":"e1").focus()},30)}
+ /* --- obsługa zdarzeń --- */
+ function wire(){
+  Array.prototype.forEach.call(document.querySelectorAll(".atab"),function(b){b.onclick=function(){if(tab==="set"&&Object.keys(dirty).length&&b.getAttribute("data-t")!=="set"&&!confirm("Masz niezapisane zmiany w ustawieniach. Przejść mimo to? Zmiany zostaną zachowane do czasu odświeżenia."))return;tab=b.getAttribute("data-t");ls("admtab",tab);draw()}});
+  document.getElementById("arf").onclick=function(){if(Object.keys(dirty).length&&!confirm("Odrzucić niezapisane zmiany i pobrać stan z arkusza?"))return;load()};
+  document.getElementById("aout").onclick=function(){ls("pin","");pin="";D=null;login("")};
+  if(tab==="set"){D.settings.forEach(function(o,k){var el=document.getElementById("f"+k);if(el){el.oninput=el.onchange=function(){onField(o,el)}}});
+   document.getElementById("ssave").onclick=saveSettings;document.getElementById("sdrop").onclick=function(){dirty={};draw()};return}
+  document.getElementById("fcat").onchange=function(){F.cat=this.value;draw()};document.getElementById("fst").onchange=function(){F.st=this.value;draw()};
+  var fq=document.getElementById("fq"),ft=null;fq.oninput=function(){var v=this.value;clearTimeout(ft);ft=setTimeout(function(){F.q=v;draw();var e=document.getElementById("fq");e.focus();e.setSelectionRange(v.length,v.length)},300)};
+  document.getElementById("qnew").onclick=function(){editor(null,0)};
+  var vis=visible();
+  Array.prototype.forEach.call(document.querySelectorAll(".qrow"),function(rw){var r=+rw.getAttribute("data-r"),q=byRow(r);
+   rw.querySelector(".qact").onchange=function(){var on=this.checked;run({op:"qactive",value:on?"TAK":"NIE",items:[{row:r,orig:q.v[1]}]},on?"Pytanie włączone.":"Pytanie wyłączone.").then(function(ok){if(!ok)draw()})};
+   rw.querySelector(".qbody").onclick=function(){editor(q,0)};
+   Array.prototype.forEach.call(rw.querySelectorAll("[data-a]"),function(b){b.onclick=function(e){e.stopPropagation();var a=b.getAttribute("data-a"),k=-1;vis.forEach(function(x,j){if(x.row===r)k=j});
+    if(a==="ins"){editor(null,r);return}
+    if(a==="del"){if(confirm("Usunąć pytanie z wiersza "+r+"?\n\n„"+q.v[1]+"”\n\nTej operacji nie można cofnąć z poziomu panelu."))run({op:"qdelete",row:r,orig:q.v[1]},"Pytanie usunięte.");return}
+    var t=vis[a==="up"?k-1:k+1];if(t)run({op:"qmove",row:r,orig:q.v[1],to:t.row},"Kolejność zmieniona.")}})})}
+ window.addEventListener("beforeunload",function(e){if(Object.keys(dirty).length){e.preventDefault();e.returnValue=""}});
+ if(pin)load();else login("")}
+
 /* ---------- Start ---------- */
 function boot(){
  if(hash==="tv"){tvPage();return}
+ if(hash==="admin"){adminPage();return}
  if(hash==="gp"){gpPage();return}
  if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu. Bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
  show('<p class="sub">Ładowanie quizu…</p>');
