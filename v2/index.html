@@ -64,6 +64,7 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .t0{background:#D6404A}.t1{background:#2F73D9}.t2{background:#C99410;color:#101010}.t3{background:#2E9A57}
 .tile.dim{opacity:.35}.tile.pick{outline:5px solid var(--pick);outline-offset:3px}.tile.pick:after{content:'✓';position:absolute;right:16px;top:8px;font-size:22px;color:#fff;background:var(--pick);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;outline:2px solid #fff}
 .tile:disabled{cursor:default}
+.tile,.bigbtn,.btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
 .bigbtn{border:0;border-radius:20px;color:#fff;font-size:72px;font-weight:700;min-height:34vh;cursor:pointer}
 .bigbtn:disabled{opacity:.45}
@@ -118,6 +119,7 @@ function tex(el){kxLoad().then(function(){if(window.renderMathInElement)renderMa
 function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
+function postJ(o){return fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})}
 function tok(){var t=ls("tok");if(!t){t=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36);ls("tok",t)}return t}
 function idField(){return IDL?'<input class="name" id="uid" maxlength="60" style="margin:0 0 6px" placeholder="'+esc(IDL.label)+' (opcjonalnie)" value="'+esc(ls("uid")||"")+'"><p class="sub" style="font-size:15px;margin:0 0 14px">'+esc(IDL.info)+'</p>':""}
 function idSave(){var e=document.getElementById("uid");if(e)ls("uid",e.value.trim().slice(0,60))}
@@ -161,7 +163,7 @@ function freePlayer(Q,TIME,openStart,change,FL,FB){
 
 /* ---------- Telefon: tryb na żywo ---------- */
 function livePlayer(){
- var name=ls("qn"),joined=false,st=null,off=0,ans={},lastSig="",newGame=false,lastMe=null;
+ var name=ls("qn"),joined=false,st=null,off=0,ans={},conf={},pend={},fail={},lastTap=0,lastSig="",newGame=false,lastMe=null;
  function key(){return st.game+"|"+st.i}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
@@ -170,23 +172,36 @@ function livePlayer(){
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
   if(!st){show('<p class="sub">Łączenie…</p>');return}
-  var a=ans[key()],sig=[st.phase,st.i,st.game,a,st.change,st.me&&st.me.pts].join("|");if(sig===lastSig)return;lastSig=sig;
+  var K=key(),a=ans[K],ast=a===undefined?"":conf[K]===a?"ok":fail[K]?"fail":"send",sig=[st.phase,st.i,st.game,a,ast,st.change,st.me&&st.me.pts].join("|");if(sig===lastSig)return;lastSig=sig;
   var h="",q=st.q;
   if(st.phase==="lobby")h='<p class="eyebrow">Jesteś w grze</p><h1 class="big">Cześć, '+esc(name)+'!</h1><div class="msg">Czekamy na start. Patrz na ekran główny.</div>';
   else if(st.phase==="question"){var over=remaining()<=0;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><div class="timer" id="tm">'+remaining()+' s</div>';
    if(st.phone==="buttons"){h+='<div class="btns">';for(var k=0;k<4;k++)h+='<button class="bigbtn t'+k+(a===k?" pick":"")+'" data-i="'+k+'"'+(((a!==undefined&&!st.change)||over)?" disabled":"")+'>'+SYM[k]+'</button>';h+="</div>"}
    else h+='<h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+(q.audio?'<div class="msg">🎵 Słuchaj fragmentu na ekranie głównym.</div>':'')+tilesHtml(q,{btn:1,off:((a!==undefined&&!st.change)||over),pick:a});
-   if(a!==undefined)h+='<div class="msg">Odpowiedź zapisana.'+(st.change?' Możesz ją jeszcze zmienić do końca czasu, ale kosztuje to punkty.':' Czekamy na pozostałych.')+'</div>'}
+   if(ast==="ok")h+='<div class="msg">Odpowiedź zapisana.'+(st.change&&!over?' Możesz ją jeszcze zmienić do końca czasu, ale kosztuje to punkty.':' Czekamy na pozostałych.')+'</div>';
+   else if(ast==="fail")h+='<div class="msg"><span class="bad">Odpowiedź nie dotarła do serwera.</span> Sprawdź połączenie z internetem'+(over?'.':' i wybierz odpowiedź ponownie.')+'</div>';
+   else if(ast==="send")h+='<div class="msg">Wysyłanie odpowiedzi…</div>'}
   else if(st.phase==="reveal"){var l=st.last,good=l&&l.ok;
-   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">Brak odpowiedzi.</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+LET[q.c]+'. '+esc(q.o[q.c])+'</b>'+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'}
+   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">'+(ans[K]!==undefined?'Odpowiedź nie dotarła do serwera.':'Brak odpowiedzi.')+'</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+LET[q.c]+'. '+esc(q.o[q.c])+'</b>'+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'}
   else if(st.phase==="break")h='<p class="eyebrow">Przerwa</p><h1 class="big">'+esc(BRK)+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Nie zamykaj tej strony.</div>';
   else if(st.phase==="ranking")h='<p class="eyebrow">Ranking</p><h1 class="big">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of:'Ranking')+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt. ':'')+'Sprawdź ranking na ekranie głównym.</div>';
   else h='<p class="eyebrow">Koniec quizu</p><h1 class="big">'+(st.me?'Twój wynik: '+st.me.pts+' pkt':'Koniec quizu')+'</h1><div class="msg">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Dziękujemy za grę!</div>';
   show(h);
   Array.prototype.forEach.call(document.querySelectorAll("[data-i]"),function(b){b.onclick=function(){answer(+b.getAttribute("data-i"))}})}
- function answer(k){if(!st||st.phase!=="question"||remaining()<=0)return;if(ans[key()]!==undefined&&(!st.change||ans[key()]===k))return;ans[key()]=k;saveAns();post({type:"answer",name:name,i:st.i,choice:k,ms:Date.now()+off-st.startedAt});lastSig="";draw()}
- function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){setT(d);off=d.now-Date.now();var prev=st;st=d;
+ /* Odpowiedź uznajemy za zapisaną dopiero po potwierdzeniu z serwera (odpowiedź na POST albo pole mine w stanie gry).
+    Do tego czasu jest ponawiana; serwer traktuje ponowienie tej samej odpowiedzi jako potwierdzenie. Krótkie podwójne stuknięcie jest ignorowane. */
+ function inTime(){return st&&st.phase==="question"&&(Date.now()+off-st.startedAt)<st.time*1000+1500}
+ function answer(k){var t=Date.now();if(t-lastTap<400)return;lastTap=t;if(!st||st.phase!=="question"||remaining()<=0)return;var K=key(),a=ans[K];if(a!==undefined&&(!st.change||a===k)&&!fail[K])return;ans[K]=k;saveAns();delete conf[K];delete fail[K];sendAns(K,k,Date.now()+off-st.startedAt,0);lastSig="";draw()}
+ function sendAns(K,k,ms,n){if(ans[K]!==k||conf[K]===k)return;pend[K]=k;var p=K.split("|");
+  function retry(){if(ans[K]!==k||conf[K]===k)return;if(inTime()&&key()===K&&n<10)setTimeout(function(){sendAns(K,k,ms,n+1)},500+300*n);else{delete pend[K];fail[K]=1;lastSig="";draw()}}
+  postJ({type:"answer",name:name,game:p[0],i:+p[1],choice:k,ms:ms}).then(function(r){if(ans[K]!==k)return;
+   if(r.ok){delete pend[K];conf[K]=k}else if(r.dup&&r.choice!==undefined){delete pend[K];ans[K]=r.choice;saveAns();conf[K]=r.choice}else if(r.late){delete pend[K];fail[K]=1}else{retry();return}
+   lastSig="";draw()}).catch(retry)}
+ function syncAns(d){if(d.phase!=="question")return;var K=d.game+"|"+d.i;
+  if(d.mine!==undefined&&d.mine!==null){if(ans[K]===undefined){ans[K]=d.mine;saveAns()}if(ans[K]===d.mine){conf[K]=d.mine;delete fail[K];delete pend[K]}}
+  else if(ans[K]!==undefined&&conf[K]!==ans[K]&&pend[K]===undefined&&!fail[K]&&inTime())sendAns(K,ans[K],Date.now()+off-d.startedAt,0)}
+ function tick(){get("action=state&name="+encodeURIComponent(name)).then(function(d){setT(d);off=d.now-Date.now();var prev=st;st=d;if(joined)syncAns(d);
   if(joined&&d.game){var jg=ls("jg");if(jg==="?"||!jg)ls("jg",d.game);else if(jg!==d.game){joined=false;ls("joined","- ");newGame=true;lastMe=prev&&prev.game===jg?prev.me:null;lastSig=""}}
   draw()}).catch(function(){})}
  setInterval(function(){var e=document.getElementById("tm");if(e&&st&&st.phase==="question"){e.textContent=remaining()+" s";if(remaining()<=0){lastSig="";draw()}}},300);

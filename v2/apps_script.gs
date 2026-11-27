@@ -214,7 +214,8 @@ function liveRows_(game) {
   rows.forEach(function (r) {
     if (Number(r[3]) < 0) { out.push(r); return; }
     var k = String(r[2]) + '|' + r[3];
-    if (seen[k] === undefined) { seen[k] = out.length; out.push(r); } else out[seen[k]] = r;
+    if (seen[k] === undefined) { seen[k] = out.length; out.push(r); }
+    else if (Number(out[seen[k]][4]) !== Number(r[4])) out[seen[k]] = r;   // ponowiony zapis tej samej odpowiedzi nie zmienia czasu
   });
   return out;
 }
@@ -334,6 +335,10 @@ function stateOut_(p) {
     }
   }
   var rk = ranking_(st.game);
+  if (p.name && st.phase === 'question') {   // potwierdzenie dla telefonu: odpowiedź zapisana na serwerze
+    var mine = CacheService.getScriptCache().get('a|' + st.game + '|' + String(p.name).slice(0, 20) + '|' + st.i);
+    if (mine !== null) out.mine = Number(mine);
+  }
   if (p.name) {
     var pos = -1, me = null;
     rk.forEach(function (r, k) { if (r.name === p.name) { pos = k + 1; me = r; } });
@@ -641,17 +646,26 @@ function doPost(e) {
   }
   if (type === 'answer') {
     var i = Number(d.i), choice = Number(d.choice), now = Date.now();
-    if (st.phase !== 'question' || i !== st.i) return json_({ ok: 0, late: 1 });
+    if (!(choice >= 0 && choice <= 3)) return json_({ ok: 0 });
+    if (st.game !== (d.game || st.game) || st.phase !== 'question' || i !== st.i) return json_({ ok: 0, late: 1 });
     if (now - st.startedAt > (c.time * 1000) + 2000) return json_({ ok: 0, late: 1 });
-    var key = 'a|' + st.game + '|' + name + '|' + i, prev = cache.get(key);
-    if (prev !== null && (!c.change || Number(prev) === choice)) return json_({ ok: 0, dup: 1 });
-    cache.put(key, String(choice), 21600);
-    var q = questionById_(st.ids[i]), ok = q && q.c === choice ? 1 : 0;
-    var ms = Math.min(c.time * 1000, Math.max(Number(d.ms) || 0, now - st.startedAt - 2000, 0));
-    var pts = ok ? 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))) : 0;
-    sh_(LIVE).appendRow([new Date(), st.game, name, i, choice, ok, pts, ms]);
-    cache.remove('rk');
-    return json_({ ok: 1 });
+    var key = 'a|' + st.game + '|' + name + '|' + i;
+    // Zapis pod blokadą: równoczesne appendRow bez blokady potrafią nadpisać sobie wiersze.
+    // Ponowione wysłanie tej samej odpowiedzi jest potwierdzane (ok), a nie odrzucane.
+    var lk = LockService.getScriptLock(); lk.waitLock(10000);
+    try {
+      var prev = cache.get(key);
+      if (prev !== null && Number(prev) === choice) return json_({ ok: 1, dup: 1, choice: choice });
+      if (prev !== null && !c.change) return json_({ ok: 0, dup: 1, choice: Number(prev) });
+      var q = questionById_(st.ids[i]), ok = q && q.c === choice ? 1 : 0;
+      var ms = Math.min(c.time * 1000, Math.max(Number(d.ms) || 0, now - st.startedAt - 2000, 0));
+      var pts = ok ? 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))) : 0;
+      sh_(LIVE).appendRow([new Date(), st.game, name, i, choice, ok, pts, ms]);
+      SpreadsheetApp.flush();
+      cache.put(key, String(choice), 21600);   // dopiero po udanym zapisie
+      cache.remove('rk');
+    } finally { lk.releaseLock(); }
+    return json_({ ok: 1, choice: choice });
   }
   return json_({ ok: 0 });
 }
