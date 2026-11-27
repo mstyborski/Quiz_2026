@@ -61,6 +61,7 @@ function cfg_() {
     freeLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Tryb dowolny: limit prób']),
     freeBest: String(c['Tryb dowolny: zasada punktów'] || '').indexOf('Tylko') !== 0,
     random: c['Losowa kolejność pytań'] === 'Tak',
+    round: (function (v) { var n = Number(v); return isNaN(n) || n <= 0 ? 0 : Math.floor(n); })(c['Runda quizu']),
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
     freeTo: toDate_(c['Tryb dowolny: otwarty do']),
     title: String(c['Nazwa quizu'] || 'Quiz żeglarski').trim(),
@@ -85,7 +86,8 @@ function pick_(c, seedStr) {
     function rnd() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }
     for (i = list.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; }
   }
-  return list.slice(0, c.nq || 999);
+  var off = (c.round && c.nq) ? (c.round - 1) * c.nq : 0;   // Runda quizu: kolejna paczka pytań
+  return list.slice(off, off + (c.nq || 999));
 }
 // Seed trybu dowolnego: wszyscy w danej sesji (okno „otwarty od” albo dany dzień) dostają ten sam zestaw.
 function freeSeed_(c) {
