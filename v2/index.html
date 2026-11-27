@@ -11,11 +11,11 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;min-height:100vh}
 h1,h2,h3{font-family:'Space Grotesk',Arial,sans-serif;margin:0}
 .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 90px}
-.host .wrap{max-width:1500px;padding:40px 56px 100px}
+.host .wrap{max-width:1600px;padding:24px 48px 90px}
 .eyebrow{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
-.host .eyebrow{font-size:22px}
-.big{font-size:clamp(28px,5vw,56px);line-height:1.1;font-weight:700}
-.host .big{font-size:60px}
+.host .eyebrow{font-size:clamp(16px,2.4vh,22px)}
+.big{font-size:clamp(24px,4.5vw,46px);line-height:1.15;font-weight:700}
+.host .big{font-size:clamp(24px,4.2vh,44px)}
 .sub{color:var(--muted);font-size:18px;line-height:1.4;margin:12px 0 0}
 .host .sub{font-size:28px}
 button,input{font:inherit}
@@ -37,7 +37,7 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .chip{background:var(--card);border-radius:999px;padding:8px 16px;font-size:18px}
 .host .chip{font-size:26px;padding:10px 22px}
-.timer{font-family:'Space Grotesk',Arial,sans-serif;font-size:56px;font-weight:700;color:var(--accent)}
+.timer{font-family:'Space Grotesk',Arial,sans-serif;font-size:44px;font-weight:700;color:var(--accent)}
 .board{margin-top:24px;display:grid;gap:10px}
 .rowb{display:flex;justify-content:space-between;background:var(--card);border-radius:12px;padding:14px 20px;font-size:20px}
 .host .rowb{font-size:32px;padding:18px 28px}
@@ -54,12 +54,12 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .sn{font-weight:700}
 .ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
 
-.tiles{display:grid;gap:14px;margin-top:22px;grid-template-columns:1fr}
-.host .tiles{grid-template-columns:1fr 1fr;gap:22px}
-.tile{position:relative;border:0;border-radius:16px;padding:22px 20px 22px 76px;font-size:22px;font-weight:700;line-height:1.25;color:#fff;text-align:left;min-height:84px;display:flex;align-items:center;width:100%;cursor:pointer}
-.host .tile{font-size:34px;padding:30px 30px 30px 110px;min-height:130px;cursor:default}
-.tile .sym{position:absolute;left:20px;top:50%;transform:translateY(-50%);font-size:40px}
-.host .tile .sym{left:32px;font-size:60px}
+.tiles{display:grid;gap:8px;margin-top:12px;grid-template-columns:1fr}
+.host .tiles{grid-template-columns:1fr 1fr;gap:12px}
+.tile{position:relative;border:0;border-radius:16px;padding:10px 14px 10px 56px;font-size:17px;font-weight:700;line-height:1.25;color:#fff;text-align:left;min-height:52px;display:flex;align-items:center;width:100%;cursor:pointer}
+.host .tile{font-size:clamp(18px,3vh,28px);padding:1.4vh 22px 1.4vh 80px;min-height:8vh;cursor:default}
+.tile .sym{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:26px}
+.host .tile .sym{left:24px;font-size:clamp(28px,4.4vh,44px)}
 .tile .cnt{position:absolute;right:22px;top:50%;transform:translateY(-50%);font-size:34px}
 .t0{background:#D6404A}.t1{background:#2F73D9}.t2{background:#C99410;color:#101010}.t3{background:#2E9A57}
 .tile.dim{opacity:.35}.tile.pick{outline:5px solid var(--pick);outline-offset:3px}.tile.pick:after{content:'✓';position:absolute;right:16px;top:8px;font-size:22px;color:#fff;background:var(--pick);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;outline:2px solid #fff}
@@ -79,9 +79,9 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .hostbar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;background:var(--hostbar);padding:10px 16px;flex-wrap:wrap}
 .hostbar input{width:110px;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:16px}
 .hostbar .btn{font-size:17px;padding:12px 18px}
-.qimg{display:block;max-width:100%;max-height:46vh;margin:16px auto;border-radius:14px;object-fit:contain}
+.qimg{display:block;max-width:100%;max-height:30vh;margin:16px auto;border-radius:14px;object-fit:contain}
 .corner{position:fixed;right:20px;top:20px;background:#fff;padding:8px;border-radius:10px}
-.katex{font-size:1.05em}.tile .katex{color:inherit;font-size:1.3em}
+.katex{font-size:1.05em}.tile .tx{display:block;white-space:normal}.tile .katex{color:inherit;font-size:1.15em}.big .katex{font-size:1em}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Inter:wght@400;600&display=swap">
 </head>
@@ -106,12 +106,15 @@ function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" 
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
-function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>';if(/\$|\\\(|\\\[/.test(h))tex(app)}
+function show(h){app.innerHTML='<div class="wrap">'+(LOGO?'<img class="logo" src="'+esc(LOGO)+'" alt="">':'')+h+'</div>';fit();Array.prototype.forEach.call(app.querySelectorAll('img'),function(i){if(!i.complete)i.onload=fit});if(/\$|\\\(|\\\[/.test(h))tex(app)}
+/* Ekran z pytaniem ma się zmieścić bez przewijania: w razie potrzeby całość jest proporcjonalnie zmniejszana (do 55%). */
+function fit(){var w=app.querySelector('.wrap');if(!w)return;w.style.zoom='';if(!w.querySelector('.tiles,.btns,.qimg'))return;var z=1;while(z>0.55&&w.getBoundingClientRect().height>window.innerHeight+2){z=Math.round((z-0.05)*100)/100;w.style.zoom=z}}
+window.addEventListener('resize',function(){fit()});
 /* LaTeX: $...$, $$...$$, \(...\), \[...\] przez KaTeX (ładowany tylko gdy potrzebny) */
 var KX="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/",kxP=null;
 function kxLoad(){if(kxP)return kxP;kxP=new Promise(function(ok,no){var l=document.createElement("link");l.rel="stylesheet";l.href=KX+"katex.min.css";document.head.appendChild(l);
  var s=document.createElement("script");s.src=KX+"katex.min.js";s.onload=function(){var t=document.createElement("script");t.src=KX+"contrib/auto-render.min.js";t.onload=ok;t.onerror=no;document.head.appendChild(t)};s.onerror=no;document.head.appendChild(s)});return kxP}
-function tex(el){kxLoad().then(function(){if(window.renderMathInElement)renderMathInElement(el,{delimiters:[{left:"$$",right:"$$",display:true},{left:"\\[",right:"\\]",display:true},{left:"$",right:"$",display:false},{left:"\\(",right:"\\)",display:false}],throwOnError:false,ignoredTags:["script","noscript","style","textarea","input"]})}).catch(function(){})}
+function tex(el){kxLoad().then(function(){if(window.renderMathInElement)renderMathInElement(el,{delimiters:[{left:"$$",right:"$$",display:true},{left:"\\[",right:"\\]",display:true},{left:"$",right:"$",display:false},{left:"\\(",right:"\\)",display:false}],throwOnError:false,ignoredTags:["script","noscript","style","textarea","input"]});fit()}).catch(function(){})}
 function pageUrl(){return location.href.split("#")[0]}
 function get(q){return fetch(SCRIPT_URL+"?"+q+"&t="+Date.now()).then(function(r){return r.json()})}
 function post(o){try{return fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)})}catch(e){}}
@@ -129,7 +132,7 @@ function stopAudio(){if(AU){try{AU.pause()}catch(e){}AU=null}}
 function mediaHtml(q){return q&&q.img?'<img class="qimg" src="'+esc(q.img)+'" alt="">':""}
 function gate(cb){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Pytanie muzyczne</h1><div class="msg">Naciśnij „Odtwórz", aby usłyszeć fragment. Czas na odpowiedź zaczyna biec od tego momentu.</div><p><button class="btn" id="pl" style="margin-top:20px">▶ Odtwórz</button></p>');document.getElementById("pl").onclick=cb}
 function playAudio(q){stopAudio();if(!q.audio)return;AU=new Audio(q.audio);AU.play().catch(function(){});var r=document.getElementById("rp");if(r)r.onclick=function(){if(AU){AU.currentTime=0;AU.play().catch(function(){})}}}
-function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<4;k++){var c="tile t"+k+(o.dim&&o.dim[k]?" dim":"")+(o.pick===k?" pick":"");var inner='<span class="sym">'+SYM[k]+'</span>'+esc(q.o[k])+(o.cnt?'<span class="cnt">'+o.cnt[k]+'</span>':"");h+=o.btn?'<button class="'+c+'" data-i="'+k+'"'+(o.off?" disabled":"")+'>'+inner+'</button>':'<div class="'+c+'">'+inner+'</div>'}return h+"</div>"}
+function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<4;k++){var c="tile t"+k+(o.dim&&o.dim[k]?" dim":"")+(o.pick===k?" pick":"");var inner='<span class="sym">'+SYM[k]+'</span><span class="tx">'+esc(q.o[k])+'</span>'+(o.cnt?'<span class="cnt">'+o.cnt[k]+'</span>':"");h+=o.btn?'<button class="'+c+'" data-i="'+k+'"'+(o.off?" disabled":"")+'>'+inner+'</button>':'<div class="'+c+'">'+inner+'</div>'}return h+"</div>"}
 function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b></span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
 
 /* ---------- Telefon: tryb dowolny ---------- */
@@ -143,14 +146,14 @@ function freePlayer(Q,TIME,openStart,change,FL,FB){
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
  function send(){post({type:"result",att:att,name:name,pts:pts,good:good,tok:tok(),id:IDL?(ls("uid")||""):""})}
  function wait(){if(i>0)send();show('<p class="eyebrow">'+(i===0?'Jesteś w grze':'Przerwa w quizie')+'</p><h1 class="big">'+(i===0?'Czekamy na start':esc(BRK))+'</h1><div class="msg">'+(i===0?'Prowadzący uruchomi pierwsze pytania.':'Masz '+pts+' pkt. Kolejne pytania pojawią się tutaj same.')+' Nie zamykaj tej strony.</div>');clearInterval(wt);wt=setInterval(function(){poll(function(){if(i<open)next()})},3000)}
- function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}left=TIME;t0=Date.now();show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
+ function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}left=TIME;t0=Date.now();show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
   playAudio(q);sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
   Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
   if(okb)okb.onclick=function(){pick(sel,selT/1000)};
   clearInterval(tm);tm=setInterval(function(){left=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000));var e=document.getElementById("tm");if(e)e.textContent=left+" s";if(left<=0){if(sel>=0)pick(sel,selT/1000);else pick(-1)}},250)}
  function pick(k,elp){clearInterval(tm);stopAudio();var q=Q[i],el=elp!==undefined?elp:(Date.now()-t0)/1000,ok=k===q.c,gain=ok?500+Math.round(500*Math.max(0,1-el/TIME)):0;if(ok)good++;pts+=gain;
   var dim=[1,1,1,1];dim[q.c]=0;
-  show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{dim:dim,pick:k}));
+  show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{dim:dim,pick:k}));
   app.querySelector(".wrap").insertAdjacentHTML("beforeend",'<div class="msg">'+(k<0?'<span class="bad">Czas minął.</span>':ok?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>')+' +'+gain+' pkt, razem '+pts+' pkt.'+(q.cap?'<br>'+esc(q.cap):'')+'</div><p><button class="btn" id="nx" style="margin-top:20px">'+(i+1>=Q.length?"Zobacz wynik":"Dalej")+'</button></p>');
   document.getElementById("nx").onclick=function(){i++;next()}}
  function fin(){send();show('<p class="eyebrow">Koniec quizu</p><h1 class="big">'+esc(name)+', twój wynik: '+pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+good+' z '+Q.length+'. '+(FL<999?'<br>Wykorzystane podejścia: '+tries+' z '+FL+'.':'')+(!FB?'<br>W rankingu liczy się pierwsza próba.':'')+' Dziękujemy za grę!</div>'+(tries<FL?'<p><button class="btn ghost" id="again" style="margin-top:20px">Zagraj jeszcze raz</button></p>':''));var ag=document.getElementById("again");if(ag)ag.onclick=intro}
@@ -173,7 +176,7 @@ function livePlayer(){
   else if(st.phase==="question"){var over=remaining()<=0;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><div class="timer" id="tm">'+remaining()+' s</div>';
    if(st.phone==="buttons"){h+='<div class="btns">';for(var k=0;k<4;k++)h+='<button class="bigbtn t'+k+(a===k?" pick":"")+'" data-i="'+k+'"'+(((a!==undefined&&!st.change)||over)?" disabled":"")+'>'+SYM[k]+'</button>';h+="</div>"}
-   else h+='<h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+(q.audio?'<div class="msg">🎵 Słuchaj fragmentu na ekranie głównym.</div>':'')+tilesHtml(q,{btn:1,off:((a!==undefined&&!st.change)||over),pick:a});
+   else h+='<h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+(q.audio?'<div class="msg">🎵 Słuchaj fragmentu na ekranie głównym.</div>':'')+tilesHtml(q,{btn:1,off:((a!==undefined&&!st.change)||over),pick:a});
    if(a!==undefined)h+='<div class="msg">Odpowiedź zapisana.'+(st.change?' Możesz ją jeszcze zmienić do końca czasu, ale kosztuje to punkty.':' Czekamy na pozostałych.')+'</div>'}
   else if(st.phase==="reveal"){var l=st.last,good=l&&l.ok;
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">Brak odpowiedzi.</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+LET[q.c]+'. '+esc(q.o[q.c])+'</b>'+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'}
@@ -249,13 +252,13 @@ function gpPage(){
   (idSave(),claim("gp",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty przez inne urządzenie. Wybierz inny.</div>');return}
    name=v;ls("gpn",name);
    get("action=gpquestions").then(function(d){if(!d.ok||!d.questions||!d.questions.length){home();return}Q=d.questions;TIME=d.time||20;change=!!d.change;round=d.round;i=0;ch=[];ms=[];ask()}).catch(function(){err(home)})})}
- function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
+ function ask(go){var q=Q[i];if(q.audio&&!go){gate(function(){ask(true)});return}t0=Date.now();show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><div class="timer" id="tm">'+TIME+' s</div><h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+tilesHtml(q,{btn:1})+(q.audio?'<p><button class="btn ghost" id="rp">↻ Posłuchaj ponownie</button></p>':'')+(change?'<div class="msg">Możesz zmienić odpowiedź do końca czasu. Liczy się moment ostatniego wyboru, więc zmiana kosztuje punkty.</div><p><button class="btn" id="ok" disabled>Zatwierdź</button></p>':''));
   playAudio(q);sel=-1;selT=0;var tl=document.querySelectorAll("button.tile"),okb=document.getElementById("ok");
   Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
   if(okb)okb.onclick=function(){pick(sel,selT)};
   clearInterval(tm);tm=setInterval(function(){var l=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000)),e=document.getElementById("tm");if(e)e.textContent=l+" s";if(l<=0){if(sel>=0)pick(sel,selT);else pick(-1)}},250)}
  function pick(k,msv){clearInterval(tm);stopAudio();ch[i]=k;ms[i]=k<0?TIME*1000:(msv!==undefined?msv:Date.now()-t0);var q=Q[i];
-  show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(22px,4.5vw,36px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{pick:k,dim:[1,1,1,1].map(function(x,j){return j===k?0:1})}));
+  show('<p class="eyebrow">Runda '+round+' · pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+tilesHtml(q,{pick:k,dim:[1,1,1,1].map(function(x,j){return j===k?0:1})}));
   setTimeout(function(){i++;if(i>=Q.length)send();else ask()},600)}
  function send(){show('<p class="sub">Zapisuję wynik…</p>');
   get("action=gpsubmit&round="+round+"&name="+encodeURIComponent(name)+"&tok="+tok()+"&a="+ch.join(",")+"&m="+ms.join(",")).then(function(r){
