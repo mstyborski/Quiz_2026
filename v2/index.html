@@ -320,7 +320,8 @@ function tvPage(){
  function cmd(c){post({type:"host",cmd:c,pin:document.getElementById("pin")?document.getElementById("pin").value:pin});setTimeout(tick,700)}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function bar(){var b="";var p=st.phase;
-  if(st.mode!=="live")return"";
+  var adm='<a class="btn ghost" href="#admin" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none">⚙ Panel sterowania</a>';
+  if(st.mode!=="live")return'<div class="hostbar">'+adm+'</div>';
   b='<div class="hostbar"><input id="pin" type="password" placeholder="PIN" value="'+esc(pin)+'">';
   if(p==="lobby")b+='<button class="btn" data-c="start">Start gry</button>';
   if(p==="question")b+=(st.q&&st.q.audio?'<button class="btn ghost" data-c="replay">▶ Odtwórz ponownie</button>':'')+((st.round||1)<2?'<button class="btn ghost" data-c="discuss">Dyskusja i ponowne głosowanie</button>':'')+'<button class="btn" data-c="reveal">Pokaż odpowiedź</button>';
@@ -328,7 +329,7 @@ function tvPage(){
   if(p==="reveal")b+='<button class="btn" data-c="ranking">Ranking</button><button class="btn ghost" data-c="break">Przerwa</button><button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
   if(p==="break")b+='<button class="btn" data-c="next">Wróć do gry</button>';
   if(p==="ranking")b+='<button class="btn ghost" data-c="break">Przerwa</button><button class="btn" data-c="next">'+(st.i+1>=st.n?"Wynik końcowy":"Następne pytanie")+'</button>';
-  b+='<button class="btn ghost" data-c="reset">Nowa gra (reset)</button></div>';return b}
+  b+='<button class="btn ghost" data-c="reset">Nowa gra (reset)</button>'+adm+'</div>';return b}
  function draw(){
   if(!st){show('<p class="sub">Łączenie…</p>');return}
   var sig=JSON.stringify([st.mode,st.phase,st.i,st.game,st.round,st.joined,st.answered,st.dist,st.dist1,st.rank,st.names,st.freerank]);if(sig===lastSig)return;lastSig=sig;
@@ -343,7 +344,7 @@ function tvPage(){
    h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · poprawna odpowiedź: '+esc(q.kind==="num"?corrText(q):q.kind==="tf"?q.o[q.c]:LET[q.c])+'</p><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+distHtml(q,st,true)+(q.expl?'<p class="sub expl">'+esc(q.expl)+'</p>':'')+(q.cap?'<p class="sub">'+esc(q.cap)+'</p>':'')+'<h2 style="margin-top:30px;font-size:36px">Najlepsza trójka</h2>'+rankHtml(r3,3,r3.length?r3[0].pts:0)}
   else if(p==="break"){var rb=st.rank||[];h='<p class="eyebrow">Przerwa</p><h1 class="big" style="font-size:clamp(40px,7vw,96px)">'+esc(BRK)+'</h1><h2 style="margin-top:30px;font-size:32px">Najlepsi gracze</h2>'+rankHtml(rb,5,rb.length?rb[0].pts:0)}
   else{var rk=st.rank||[];h='<p class="eyebrow">'+(p==="final"?"Koniec quizu":"Ranking po pytaniu "+(st.i+1))+'</p><h1 class="big">'+(p==="final"?"Wyniki końcowe":"Najlepsi gracze")+'</h1>'+rankHtml(rk,10,rk.length?rk[0].pts:0)}
-  show(h+(st.mode==="live"?'<div style="height:90px"></div>':""));
+  show(h+'<div style="height:90px"></div>');
   if(st.mode==="live"){if(p==="question"&&q&&q.audio){var kk=st.game+"|"+st.i;if(tvKey!==kk){tvKey=kk;stopAudio();AU=new Audio(q.audio);AU.play().catch(function(){})}}else stopAudio()}
   var qe=document.getElementById("qr");if(qe)qr(qe,380);
   app.insertAdjacentHTML("beforeend",bar());
