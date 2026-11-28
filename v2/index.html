@@ -361,6 +361,9 @@ function tvPage(){
  draw();tick();setInterval(tick,1500)}
 
 
+/* W trybie głosowania nagłówek i tytuł karty to „Głosowanie i opinie” (zamiast nazwy quizu). */
+var PT="Głosowanie i opinie";
+function setP(d){setT(d);QT=PT;document.title=PT+(QS?" – "+QS:"")}
 /* ---------- Głosowanie i opinie: telefon (anonimowo, bez pseudonimu) ---------- */
 function pollPlayer(){
  var st=null,struct="",sel={},pend={},sent={},opq={};
@@ -386,12 +389,12 @@ function pollPlayer(){
    else h+='<textarea class="name" id="pop" maxlength="280" rows="4" placeholder="Twoja opinia…" style="resize:vertical"></textarea><div class="row" style="justify-content:space-between"><small class="sub" id="pcnt" style="margin:0">0 / 280</small><button class="btn" id="psend">Wyślij opinię</button></div><div id="pmy" style="margin-top:12px"></div>';
    h+='<div class="msg" id="pst"></div>'}
   else if(st.phase==="end")h='<p class="eyebrow">'+QT+'</p><h1 class="big">Dziękujemy za udział!</h1><div class="msg">Głosowanie i zbieranie opinii zostało zakończone.</div>';
-  else h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Jesteś w grze</h1><div class="msg">Za chwilę zaczynamy. Tematy pojawią się tutaj same. Odpowiedzi są anonimowe. Nie zamykaj tej strony.</div>';
+  else h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Jesteś połączony</h1><div class="msg">Za chwilę zaczynamy. Tematy pojawią się tutaj same. Odpowiedzi są anonimowe. Nie zamykaj tej strony.</div>';
   show(h);
   Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){vote(+b.getAttribute("data-i"))}});
   var sb=document.getElementById("psend");if(sb){sb.onclick=opinion;var ta=document.getElementById("pop");ta.oninput=cnt;ta.onkeydown=function(e){if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))opinion()}}
   status()}
- function tick(){get("action=pstate&tok="+tok()).then(function(d){setT(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
+ function tick(){get("action=pstate&tok="+tok()).then(function(d){setP(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
  draw();tick();setInterval(tick,2500)}
 
 /* ---------- Głosowanie i opinie: ekran główny ---------- */
@@ -420,7 +423,7 @@ function tvPoll(){
   app.insertAdjacentHTML("beforeend",bar());
   Array.prototype.forEach.call(document.querySelectorAll("[data-c]"),function(b){b.onclick=function(){var c=b.getAttribute("data-c");if(c==="preset"&&!confirm("Zacząć nową sesję? Ekran wróci do strony startowej; dotychczasowe odpowiedzi zostają w arkuszu."))return;pin=document.getElementById("pin").value;ls("pin",pin);cmd(c)}});
   Array.prototype.forEach.call(document.querySelectorAll(".bub"),function(e){e.onclick=function(){pin=document.getElementById("pin").value;if(!pin)return;if(!confirm("Ukryć tę opinię z ekranu?\n\n„"+e.textContent+"”\n\nPozostanie w arkuszu z oznaczeniem „ukryta”."))return;ls("pin",pin);var ids=e.getAttribute("data-o").split(",");ids.reduce(function(pr,id){return pr.then(function(){return cmd("phide",{oid:id})})},Promise.resolve())}})}
- function tick(){get("action=pstate&full=1").then(function(d){setT(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
+ function tick(){get("action=pstate&full=1").then(function(d){setP(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
  draw();tick();setInterval(tick,2000)}
 
 /* ---------- Grand Prix (wiele rund, punkty się kumulują) ---------- */
@@ -467,7 +470,7 @@ function adminPage(){
  function login(msg){show('<div class="alogin">'+QMARK.replace('amark','amark big')+'<div><p class="eyebrow">'+QT+'</p><h1 class="big">Panel prowadzącego</h1></div></div><div class="acard" style="max-width:420px;margin-top:24px"><label class="alab" for="apin">PIN prowadzącego</label><input class="ain" id="apin" type="password" inputmode="numeric" autocomplete="current-password" value=""><button class="btn" id="ago" style="margin-top:14px;width:100%">Zaloguj</button>'+(msg?'<p class="bad" style="margin:12px 0 0">'+esc(msg)+'</p>':'')+'</div>');
   var i=document.getElementById("apin");i.focus();function go(){pin=i.value.trim();if(!pin)return;load(true)}document.getElementById("ago").onclick=go;i.onkeydown=function(e){if(e.key==="Enter")go()}}
  function load(fromLogin){if(!D)show('<p class="sub">Ładowanie panelu…</p>');api({op:"load"}).then(function(d){if(!d.ok){if(d.error==="pin"){ls("pin","");login(fromLogin?"Nieprawidłowy PIN.":"")}else login(d.error);return}ls("pin",pin);take(d);draw()}).catch(function(){if(D)toast("Brak połączenia z serwerem.",1);else login("Brak połączenia z serwerem. Spróbuj ponownie.")})}
- function take(d){D=d;dirty={};own={};applyPal(setting("Paleta kolorów"));if(d.title){QT=d.title;QS=d.sub||""}}
+ function take(d){D=d;dirty={};if(String(setting("Tryb gry")).indexOf("Głosowanie")===0)d.title=PT;own={};applyPal(setting("Paleta kolorów"));if(d.title){QT=d.title;QS=d.sub||""}}
  function run(o,okMsg){if(busy)return Promise.resolve(false);busy=true;document.body.classList.add("busy");
   return api(o).then(function(d){busy=false;document.body.classList.remove("busy");if(!d.ok){if(d.error==="pin"){login("Sesja wygasła lub PIN został zmieniony. Zaloguj się ponownie.");return false}toast(d.error||"Nie udało się zapisać.",1);return false}take(d);draw();toast(okMsg||"Zapisano.");return true})
   .catch(function(){busy=false;document.body.classList.remove("busy");toast("Brak połączenia z serwerem. Zmiany nie zostały zapisane.",1);return false})}
@@ -480,7 +483,7 @@ function adminPage(){
  function draw(){var h=head()+(tab==="set"?settingsHtml():tab==="p"?topicsHtml():questionsHtml());show(h);wire();if(tab==="q")tex(document.getElementById("qlist"))}
  /* --- ustawienia --- */
  function dtIn(v){return v?v.replace(" ","T"):""}
- function ctl(o,id){var v=dirty.hasOwnProperty(o.label)?dirty[o.label]:o.value;
+ function ctl(o,id){var v=dirty.hasOwnProperty(o.label)?dirty[o.label]:o.value;if(o.label==="Zestaw głosowań i opinii"&&!o.readonly)o={label:o.label,value:o.value,row:o.row,strict:true,opts:["Wszystkie"].concat(psets())};
   if(o.readonly)return /^https?:/.test(v)?'<a class="aval" href="'+esc(v)+'" target="_blank">'+esc(v)+'</a>':'<span class="aval">'+esc(v)+'</span>';
   if(o.kind==="datetime")return '<input class="ain" type="datetime-local" id="'+id+'" value="'+esc(dtIn(v))+'">';
   if(o.opts&&o.strict){var op=o.opts.slice();if(op.indexOf(v)<0)op.unshift(v);return '<select class="ain" id="'+id+'">'+op.map(function(x){return'<option'+(x===v?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select>'}
@@ -620,13 +623,13 @@ function adminPage(){
 
 /* ---------- Start ---------- */
 function boot(){
- if(hash==="tv"){get("action=config").then(function(c){setT(c);if(c.mode==="poll")tvPoll();else tvPage()}).catch(function(){tvPage()});return}
+ if(hash==="tv"){get("action=config").then(function(c){setT(c);if(c.mode==="poll"){setP(c);tvPoll()}else tvPage()}).catch(function(){tvPage()});return}
  if(hash==="admin"){adminPage();return}
  if(hash==="gp"){gpPage();return}
  if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu. Bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
  show('<p class="sub">Ładowanie quizu…</p>');
  get("action=config").then(function(c){setT(c);
-  if(c.mode==="poll"){pollPlayer();return}
+  if(c.mode==="poll"){setP(c);pollPlayer();return}
   if(c.mode==="live"){livePlayer();return}
   if(c.win&&c.win.status!=="open"){closedScreen(c.win);return}
   get("action=questions").then(function(d){
