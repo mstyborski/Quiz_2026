@@ -91,6 +91,10 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .admin .wrap{max-width:1180px;padding-bottom:110px}
 .admin .big{font-size:clamp(22px,3.2vw,34px)}
 .asub{color:var(--muted);font-weight:400}
+.abrand,.alogin{display:flex;align-items:center;gap:16px}
+.amark{width:56px;height:56px;flex:none;border-radius:13px;box-shadow:0 0 0 1px var(--border)}
+.amark.big{width:84px;height:84px;border-radius:19px}
+@media(max-width:720px){.amark{width:44px;height:44px;border-radius:10px}.amark.big{width:64px;height:64px}}
 .ahead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 .ahead h2{font-size:22px}
 .alinks{display:flex;gap:8px;flex-wrap:wrap}
@@ -169,6 +173,7 @@ var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"
 var palKey="";
 function applyPal(n){if(n===palKey)return;palKey=n;var base=PAL["Morska"],p=PAL[n]||base,r=document.documentElement.style,k;var all={bg:"#0F2A43",card:"#17395A",text:"#F4F1EA",muted:"#C9D6E2",accent:"#F09A5E",btn:"#E8742B",btntext:"#0F2A43",border:"#4A6A8A",bar:"#2C5C8A",hostbar:"#0b1e31",ok:"#6FD08C",bad:"#FF9A8A",pick:"#FFFFFF"};for(k in all)r.setProperty("--"+k,p[k]||all[k])}
 function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}if(d){LOGO=d.logo||"";IDL=d.idl||null;if(d.brk)BRK=d.brk;applyPal(d.palette||"")}}
+var QMARK='<svg class="amark" role="img" aria-label="Logo quizu" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F2A43"/><circle cx="31" cy="30" r="17" fill="none" stroke="#F4F1EA" stroke-width="8"/><path d="M38 38 L50 50" stroke="#E8742B" stroke-width="9" stroke-linecap="round"/></svg>';
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
@@ -356,7 +361,7 @@ function adminPage(){
  var D=null,pin=ls("pin"),tab=ls("admtab")||"set",dirty={},own={},F={cat:"",q:"",st:"all"},busy=false;
  function api(o){o.type="admin";o.pin=pin;return postJ(o)}
  function toast(t,bad){var e=document.getElementById("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.appendChild(e)}e.className="toast"+(bad?" bad":"");e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(function(){e.style.opacity=0},bad?6000:2500)}
- function login(msg){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Panel prowadzącego</h1><div class="acard" style="max-width:420px;margin-top:24px"><label class="alab" for="apin">PIN prowadzącego</label><input class="ain" id="apin" type="password" inputmode="numeric" autocomplete="current-password" value=""><button class="btn" id="ago" style="margin-top:14px;width:100%">Zaloguj</button>'+(msg?'<p class="bad" style="margin:12px 0 0">'+esc(msg)+'</p>':'')+'</div>');
+ function login(msg){show('<div class="alogin">'+QMARK.replace('amark','amark big')+'<div><p class="eyebrow">'+QT+'</p><h1 class="big">Panel prowadzącego</h1></div></div><div class="acard" style="max-width:420px;margin-top:24px"><label class="alab" for="apin">PIN prowadzącego</label><input class="ain" id="apin" type="password" inputmode="numeric" autocomplete="current-password" value=""><button class="btn" id="ago" style="margin-top:14px;width:100%">Zaloguj</button>'+(msg?'<p class="bad" style="margin:12px 0 0">'+esc(msg)+'</p>':'')+'</div>');
   var i=document.getElementById("apin");i.focus();function go(){pin=i.value.trim();if(!pin)return;load(true)}document.getElementById("ago").onclick=go;i.onkeydown=function(e){if(e.key==="Enter")go()}}
  function load(fromLogin){if(!D)show('<p class="sub">Ładowanie panelu…</p>');api({op:"load"}).then(function(d){if(!d.ok){if(d.error==="pin"){ls("pin","");login(fromLogin?"Nieprawidłowy PIN.":"")}else login(d.error);return}ls("pin",pin);take(d);draw()}).catch(function(){if(D)toast("Brak połączenia z serwerem.",1);else login("Brak połączenia z serwerem. Spróbuj ponownie.")})}
  function take(d){D=d;dirty={};own={};applyPal(setting("Paleta kolorów"));if(d.title){QT=d.title;QS=d.sub||""}}
@@ -366,7 +371,7 @@ function adminPage(){
  var PH={lobby:"lobby (czekamy na start)",question:"pytanie na ekranie",reveal:"odpowiedź odsłonięta",ranking:"ranking",break:"przerwa",final:"wynik końcowy"};
  function setting(l){var r=null;D.settings.forEach(function(o){if(o.label===l)r=o});return r?r.value:""}
  function head(){var g=D.game,live=setting("Tryb gry")==="Na żywo";
-  return '<div class="ahead"><div><p class="eyebrow">Panel prowadzącego</p><h1 class="big">'+esc(QT)+(QS?' <span class="asub">· '+esc(QS)+'</span>':'')+'</h1></div><div class="alinks"><a class="btn ghost" href="#tv" target="_blank">Ekran TV ↗</a><a class="btn ghost" href="'+esc(pageUrl())+'" target="_blank">Strona uczestnika ↗</a><button class="btn ghost" id="arf" title="Pobierz aktualny stan z arkusza">Odśwież</button><button class="btn ghost" id="aout">Wyloguj</button></div></div>'+
+  return '<div class="ahead"><div class="abrand">'+QMARK+'<div><p class="eyebrow">Panel prowadzącego</p><h1 class="big">'+esc(QT)+(QS?' <span class="asub">· '+esc(QS)+'</span>':'')+'</h1></div></div><div class="alinks"><a class="btn ghost" href="#tv" target="_blank">Ekran TV ↗</a><a class="btn ghost" href="'+esc(pageUrl())+'" target="_blank">Strona uczestnika ↗</a><button class="btn ghost" id="arf" title="Pobierz aktualny stan z arkusza">Odśwież</button><button class="btn ghost" id="aout">Wyloguj</button></div></div>'+
   '<div class="astat"><span class="chip">Tryb: <b>'+esc(setting("Tryb gry"))+'</b></span>'+(live?'<span class="chip">Gra na żywo: <b>'+esc(PH[g.phase]||g.phase)+'</b>'+(g.n&&g.i>=0?' · pytanie '+(g.i+1)+' z '+g.n:'')+'</span>':'')+'<span class="chip">Kategoria: <b>'+esc(setting("Kategoria do gry"))+'</b></span><span class="chip">Do gry trafi: <b>'+D.use.length+'</b> '+plPyt(D.use.length)+'</span></div>'+
   '<div class="atabs"><button class="atab'+(tab==="set"?" on":"")+'" data-t="set">Ustawienia</button><button class="atab'+(tab==="q"?" on":"")+'" data-t="q">Pytania ('+D.questions.length+')</button></div>'}
  function draw(){var h=head()+(tab==="set"?settingsHtml():questionsHtml());show(h);wire();if(tab==="q")tex(document.getElementById("qlist"))}

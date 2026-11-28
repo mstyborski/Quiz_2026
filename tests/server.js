@@ -110,5 +110,6 @@ http.createServer((req, res) => {
   if (!fp.startsWith(ROOT) || !fs.existsSync(fp)) { res.writeHead(404); res.end(); return; }
   let txt = fs.readFileSync(fp);
   if (fp.endsWith('.html')) { txt = String(txt).replace(/var SCRIPT_URL="[^"]*"/, 'var SCRIPT_URL="/exec"'); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(txt); return; }
-  res.writeHead(200); res.end(txt);
+  const ct = { '.svg': 'image/svg+xml', '.png': 'image/png', '.js': 'text/javascript' }[path.extname(fp)];
+  res.writeHead(200, ct ? { 'Content-Type': ct } : {}); res.end(txt);
 }).listen(PORT, () => console.log('mock na http://localhost:' + PORT + '/v2/'));
