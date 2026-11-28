@@ -26,6 +26,10 @@
      "Wiedza żeglarska"
     ],
     [
+     "Zestaw głosowań i opinii",
+     "Wszystkie"
+    ],
+    [
      "PIN prowadzącego",
      "1213"
     ],
@@ -185,7 +189,8 @@
     "5:2": {
      "list": [
       "Dowolny moment",
-      "Na żywo"
+      "Na żywo",
+      "Głosowanie i opinie"
      ],
      "strict": true
     },
@@ -193,7 +198,7 @@
      "range": "Kategorie!$A$2:$A$20",
      "strict": true
     },
-    "9:2": {
+    "10:2": {
      "list": [
       "Wszystkie",
       "5",
@@ -205,14 +210,14 @@
      ],
      "strict": false
     },
-    "10:2": {
+    "11:2": {
      "list": [
       "Nie",
       "Tak"
      ],
      "strict": true
     },
-    "11:2": {
+    "12:2": {
      "list": [
       "Wszystkie",
       "1",
@@ -224,28 +229,28 @@
      ],
      "strict": true
     },
-    "13:2": {
+    "14:2": {
      "list": [
       "Nie",
       "Tak"
      ],
      "strict": true
     },
-    "15:2": {
+    "16:2": {
      "list": [
       "Tylko przyciski A–D",
       "Pytanie i odpowiedzi"
      ],
      "strict": true
     },
-    "17:2": {
+    "18:2": {
      "list": [
       "Tak",
       "Nie"
      ],
      "strict": true
     },
-    "20:2": {
+    "21:2": {
      "list": [
       "Morska",
       "Jasna",
@@ -257,14 +262,14 @@
      ],
      "strict": true
     },
-    "23:2": {
+    "24:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "27:2": {
+    "28:2": {
      "list": [
       "Wszystkie",
       "0",
@@ -273,7 +278,7 @@
      ],
      "strict": false
     },
-    "30:2": {
+    "31:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -283,25 +288,25 @@
      ],
      "strict": true
     },
-    "31:2": {
+    "32:2": {
      "list": [
       "Najlepszy wynik",
       "Tylko pierwsza próba"
      ],
      "strict": true
     },
-    "33:2": {
+    "34:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "36:2": {
+    "37:2": {
      "range": "Kategorie!$A$2:$A$20",
      "strict": true
     },
-    "37:2": {
+    "38:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -311,14 +316,14 @@
      ],
      "strict": true
     },
-    "38:2": {
+    "39:2": {
      "list": [
       "Najlepszy wynik z rundy",
       "Tylko pierwsza próba"
      ],
      "strict": true
     },
-    "14:2": {
+    "15:2": {
      "list": [
       "Nie",
       "Tak"

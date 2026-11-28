@@ -68,6 +68,12 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .t0{background:#D6404A}.t1{background:#2F73D9}.t2{background:#C99410;color:#101010}.t3{background:#2E9A57}
 .tile.dim{opacity:.35}.tile.pick{outline:5px solid var(--pick);outline-offset:3px}.tile.pick:after{content:'✓';position:absolute;right:16px;top:8px;font-size:22px;color:#fff;background:var(--pick);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;outline:2px solid #fff}
 .tile:disabled{cursor:default}
+.vbars{margin-top:26px;display:grid;gap:18px}.vl{display:flex;justify-content:space-between;gap:20px;font-size:clamp(20px,3vh,30px);margin-bottom:6px}.vt{height:clamp(26px,4.5vh,44px);background:var(--card);border-radius:10px;overflow:hidden}.vf{display:block;height:100%;transition:width .6s}
+.cloud{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:center;margin-top:26px}
+.bub{position:relative;background:var(--card);border:3px solid;border-radius:24px;padding:12px 22px;line-height:1.25;max-width:48%;font-weight:600}
+.bub.new{animation:pop .5s ease-out}.bub .bn{display:inline-block;margin-left:10px;background:var(--accent);color:var(--btntext);border-radius:999px;padding:0 10px;font-size:.7em;vertical-align:middle}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.host .bub{cursor:pointer}
 .numin{display:flex;gap:10px;align-items:center}.numin .name{margin:14px 0;font-size:24px}.numin .btn{white-space:nowrap}
 .expl{font-size:17px;line-height:1.45}.host .expl{font-size:24px}
 .strip{width:100%;height:auto;display:block;margin:8px 0}.stripw{margin-top:16px}
@@ -349,11 +355,73 @@ function tvPage(){
   var qe=document.getElementById("qr");if(qe)qr(qe,380);
   app.insertAdjacentHTML("beforeend",bar());
   Array.prototype.forEach.call(document.querySelectorAll("[data-c]"),function(b){b.onclick=function(){var c=b.getAttribute("data-c");if(c==="replay"){if(AU){AU.currentTime=0;AU.play().catch(function(){})}return}if(c==="reset"&&!confirm("Zacząć nową grę? Obecne wyniki zostaną usunięte."))return;pin=document.getElementById("pin").value;ls("pin",pin);cmd(c)}})}
- function tick(){get("action=state&full=1").then(function(d){setT(d);off=d.now-Date.now();st=d;draw()}).catch(function(){})}
+ function tick(){get("action=state&full=1").then(function(d){setT(d);if(d.mode==="poll"){location.reload();return}off=d.now-Date.now();st=d;draw()}).catch(function(){})}
  setInterval(function(){if(!st)return;var e=document.getElementById("tm");if(e&&st.phase==="question"){e.textContent=remaining();
    var ak=st.game+"|"+st.i+"|"+(st.round||1);if(remaining()<=0&&pin&&!auto[ak]){auto[ak]=1;post({type:"host",cmd:st.peer&&(st.round||1)<2?"discuss":"reveal",pin:pin});setTimeout(tick,700)}}},300);
  draw();tick();setInterval(tick,1500)}
 
+
+/* ---------- Głosowanie i opinie: telefon (anonimowo, bez pseudonimu) ---------- */
+function pollPlayer(){
+ var st=null,struct="",sel={},pend={},sent={},opq={};
+ try{sent=JSON.parse(ls("psent")||"{}")}catch(e){sent={}}
+ function K(){return st.sid+"|"+st.i}
+ function saveSent(){ls("psent",JSON.stringify(sent))}
+ function status(){var e=document.getElementById("pst");if(!e||!st||!st.t)return;var k=K();
+  if(st.t.kind==="vote"){var v=sel[k]!==undefined?sel[k]:st.mine;Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.classList.toggle("pick",+b.getAttribute("data-i")===v)});
+   e.innerHTML=pend[k]?"Wysyłanie głosu…":(st.mine!==null&&st.mine!==undefined&&st.mine===v?"Głos zapisany. Możesz go zmienić, dopóki temat jest na ekranie.":(v!==undefined&&v!==null?'<span class="bad">Głos nie dotarł. Sprawdź internet i wybierz ponownie.</span>':"Wybierz jedną odpowiedź."))}
+  else{var my=sent[k]||[],n=my.filter(function(x){return x.ok}).length,w=my.length-n;
+   e.innerHTML=(w?"Wysyłanie opinii…":(n?"Wysłane opinie: <b>"+n+"</b>. Możesz dodać kolejną.":"Opinie są anonimowe i pojawią się na ekranie głównym."));
+   var l=document.getElementById("pmy");if(l)l.innerHTML=my.map(function(x){return'<div class="rowb" style="font-size:16px;margin-top:6px">'+esc(x.text)+(x.ok?"":" <small>(wysyłanie…)</small>")+'</div>'}).join("")}}
+ function vote(k){var key=K(),sid=st.sid,i=st.i;sel[key]=k;pend[key]=1;status();var n=0;
+  (function go(){postJ({type:"pvote",sid:sid,i:i,choice:k,tok:tok()}).then(function(r){if(sel[key]!==k)return;delete pend[key];if(r.ok)st.mine=k;status()}).catch(function(){if(sel[key]!==k)return;if(++n<5)setTimeout(go,700*n);else{delete pend[key];status()}})})()}
+ function opinion(){var ta=document.getElementById("pop"),text=ta.value.replace(/\s+/g," ").trim();if(!text){ta.focus();return}
+  var key=K(),sid=st.sid,i=st.i,it={text:text,cid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),ok:0};(sent[key]=sent[key]||[]).push(it);saveSent();ta.value="";cnt();status();var n=0;
+  (function go(){postJ({type:"popin",sid:sid,i:i,text:text,cid:it.cid,tok:tok()}).then(function(r){if(r.ok){it.ok=1;saveSent();status()}else if(r.limit){sent[key].splice(sent[key].indexOf(it),1);saveSent();status();document.getElementById("pst").innerHTML='<span class="bad">Osiągnięto limit opinii w tym temacie.</span>'}else if(!r.late&&++n<5)setTimeout(go,700*n)}).catch(function(){if(++n<6)setTimeout(go,800*n)})})()}
+ function cnt(){var ta=document.getElementById("pop"),c=document.getElementById("pcnt");if(ta&&c)c.textContent=ta.value.length+" / 280"}
+ function draw(){if(!st){show('<p class="sub">Łączenie…</p>');return}
+  var sg=[st.sid,st.phase,st.i].join("|");if(sg===struct){status();return}struct=sg;var h="",t=st.t;
+  if(st.phase==="topic"&&t){h='<p class="eyebrow">'+(t.kind==="vote"?"Głosowanie":"Opinia")+' · temat '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(22px,5vw,34px)">'+esc(t.t)+'</h1>';
+   if(t.kind==="vote")h+=tilesHtml({o:t.o},{btn:1});
+   else h+='<textarea class="name" id="pop" maxlength="280" rows="4" placeholder="Twoja opinia…" style="resize:vertical"></textarea><div class="row" style="justify-content:space-between"><small class="sub" id="pcnt" style="margin:0">0 / 280</small><button class="btn" id="psend">Wyślij opinię</button></div><div id="pmy" style="margin-top:12px"></div>';
+   h+='<div class="msg" id="pst"></div>'}
+  else if(st.phase==="end")h='<p class="eyebrow">'+QT+'</p><h1 class="big">Dziękujemy za udział!</h1><div class="msg">Głosowanie i zbieranie opinii zostało zakończone.</div>';
+  else h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Jesteś w grze</h1><div class="msg">Za chwilę zaczynamy. Tematy pojawią się tutaj same. Odpowiedzi są anonimowe. Nie zamykaj tej strony.</div>';
+  show(h);
+  Array.prototype.forEach.call(document.querySelectorAll("button.tile"),function(b){b.onclick=function(){vote(+b.getAttribute("data-i"))}});
+  var sb=document.getElementById("psend");if(sb){sb.onclick=opinion;var ta=document.getElementById("pop");ta.oninput=cnt;ta.onkeydown=function(e){if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))opinion()}}
+  status()}
+ function tick(){get("action=pstate&tok="+tok()).then(function(d){setT(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
+ draw();tick();setInterval(tick,2500)}
+
+/* ---------- Głosowanie i opinie: ekran główny ---------- */
+var BUBC=["#D6404A","#2F73D9","#C99410","#2E9A57"];
+function cloudGroups(ops){var g={},order=[];ops.forEach(function(o,k){var n=o.text.toLowerCase().replace(/[.!?,;:]+$/,"").replace(/\s+/g," ").trim();if(!g[n]){g[n]={text:o.text,ids:[],last:k};order.push(n)}g[n].ids.push(o.id);g[n].last=k});
+ return order.map(function(n){return g[n]}).sort(function(a,b){return b.ids.length-a.ids.length||b.last-a.last})}
+function tvPoll(){
+ document.body.className="host";var st=null,lastSig="",pin=ls("pin");
+ function cmd(c,x){var o={type:"host",cmd:c,pin:document.getElementById("pin")?document.getElementById("pin").value:pin};if(x)for(var k in x)o[k]=x[k];return postJ(o).then(function(r){if(r&&r.error&&r.error!=="pin")alert(r.error);if(r&&r.error==="pin")alert("Nieprawidłowy PIN.");lastSig="";setTimeout(tick,300)}).catch(function(){})}
+ function bar(){var p=st.phase,b='<div class="hostbar"><input id="pin" type="password" placeholder="PIN" value="'+esc(pin)+'">';
+  if(p==="lobby")b+='<button class="btn" data-c="pstart">Start</button>';
+  if(p==="topic")b+=(st.i>0?'<button class="btn ghost" data-c="pprev">← Poprzedni temat</button>':'')+'<button class="btn" data-c="pnext">'+(st.i+1>=st.n?"Zakończ":"Następny temat →")+'</button>';
+  if(p==="end")b+='<button class="btn ghost" data-c="pprev">← Wróć do ostatniego tematu</button>';
+  b+='<button class="btn ghost" data-c="preset">Nowa sesja (reset)</button><a class="btn ghost" href="#admin" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none">⚙ Panel sterowania</a></div>';return b}
+ function voteHtml(t,a){var c=a.counts||[],tot=c.reduce(function(x,y){return x+y},0),mx=Math.max.apply(null,c.concat([1]));
+  return'<div class="vbars">'+t.o.map(function(o,k){var pc=tot?Math.round(100*c[k]/tot):0;return'<div class="vbar"><div class="vl"><span>'+esc(o)+'</span><b>'+c[k]+' · '+pc+'%</b></div><div class="vt"><i class="vf" style="width:'+Math.round(100*c[k]/mx)+'%;background:'+BUBC[k%4]+'"></i></div></div>'}).join("")+'</div><p class="sub">Głosów: <b>'+tot+'</b></p>'}
+ function cloudHtml(a){var gs=cloudGroups(a.opinions||[]);if(!gs.length)return'<div class="msg">Czekamy na pierwsze opinie…</div>';var n=(a.opinions||[]).length;
+  return'<div class="cloud">'+gs.slice(0,80).map(function(g,k){var m=g.ids.length,fs=Math.max(18,Math.min(44,(m>1?26+6*Math.min(m,4):26)-Math.max(0,g.text.length-40)/8));
+   return'<div class="bub'+(g.last>=n-3?" new":"")+'" data-o="'+esc(g.ids.join(","))+'" style="font-size:'+fs.toFixed(0)+'px;border-color:'+BUBC[k%4]+'">'+esc(g.text)+(m>1?'<span class="bn">×'+m+'</span>':'')+'</div>'}).join("")+'</div><p class="sub">Opinii: <b>'+(a.total||n)+'</b> · osób: <b>'+(a.authors||0)+'</b>'+(pin?' · kliknij dymek, aby ukryć go z ekranu':'')+'</p>'}
+ function draw(){if(!st){show('<p class="sub">Łączenie…</p>');return}
+  var sig=JSON.stringify([st.sid,st.phase,st.i,st.t,st.agg]);if(sig===lastSig)return;lastSig=sig;var h="",t=st.t,p=st.phase;
+  if(p==="topic"&&t){h='<p class="eyebrow">Temat '+(st.i+1)+' z '+st.n+' · '+(t.kind==="vote"?"głosowanie":"opinie")+'</p><h1 class="big" style="padding-right:170px">'+esc(t.t)+'</h1>'+(t.kind==="vote"?voteHtml(t,st.agg||{}):cloudHtml(st.agg||{}))+'<div class="corner"><div id="qr"></div><small style="color:#0F2A43;display:block;text-align:center;font-size:13px">dołącz</small></div>'}
+  else if(p==="end")h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big" style="font-size:clamp(40px,7vw,90px)">Dziękujemy!</h1><p class="sub">Głosowanie i zbieranie opinii zakończone. Odpowiedzi zapisano w arkuszu (karta „Odpowiedzi ankiet”).</p>';
+  else h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Dołącz do głosowania</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu. Bez logowania i bez pseudonimu: odpowiedzi są anonimowe.</p><p class="sub">Tematy będą pojawiać się kolejno na tym ekranie i na telefonach.</p></div></div>';
+  show(h+'<div style="height:90px"></div>');var qe=document.getElementById("qr");if(qe)qr(qe,p==="topic"?130:380);
+  app.insertAdjacentHTML("beforeend",bar());
+  Array.prototype.forEach.call(document.querySelectorAll("[data-c]"),function(b){b.onclick=function(){var c=b.getAttribute("data-c");if(c==="preset"&&!confirm("Zacząć nową sesję? Ekran wróci do strony startowej; dotychczasowe odpowiedzi zostają w arkuszu."))return;pin=document.getElementById("pin").value;ls("pin",pin);cmd(c)}});
+  Array.prototype.forEach.call(document.querySelectorAll(".bub"),function(e){e.onclick=function(){pin=document.getElementById("pin").value;if(!pin)return;if(!confirm("Ukryć tę opinię z ekranu?\n\n„"+e.textContent+"”\n\nPozostanie w arkuszu z oznaczeniem „ukryta”."))return;ls("pin",pin);var ids=e.getAttribute("data-o").split(",");ids.reduce(function(pr,id){return pr.then(function(){return cmd("phide",{oid:id})})},Promise.resolve())}})}
+ function tick(){get("action=pstate&full=1").then(function(d){setT(d);if(d.mode!=="poll"){location.reload();return}st=d;draw()}).catch(function(){})}
+ draw();tick();setInterval(tick,2000)}
 
 /* ---------- Grand Prix (wiele rund, punkty się kumulują) ---------- */
 function gpPage(){
@@ -407,9 +475,9 @@ function adminPage(){
  function setting(l){var r=null;D.settings.forEach(function(o){if(o.label===l)r=o});return r?r.value:""}
  function head(){var g=D.game,live=setting("Tryb gry")==="Na żywo";
   return '<div class="ahead"><div class="abrand">'+QMARK+'<div><p class="eyebrow">Panel prowadzącego</p><h1 class="big">'+esc(QT)+(QS?' <span class="asub">· '+esc(QS)+'</span>':'')+'</h1></div></div><div class="alinks"><a class="btn ghost" href="#tv" target="_blank">Ekran TV ↗</a><a class="btn ghost" href="'+esc(pageUrl())+'" target="_blank">Strona uczestnika ↗</a><button class="btn ghost" id="arf" title="Pobierz aktualny stan z arkusza">Odśwież</button><button class="btn ghost" id="aout">Wyloguj</button></div></div>'+
-  '<div class="astat"><span class="chip">Tryb: <b>'+esc(setting("Tryb gry"))+'</b></span>'+(live?'<span class="chip">Gra na żywo: <b>'+esc(PH[g.phase]||g.phase)+'</b>'+(g.n&&g.i>=0?' · pytanie '+(g.i+1)+' z '+g.n:'')+'</span>':'')+'<span class="chip">Kategoria: <b>'+esc(setting("Kategoria do gry"))+'</b></span><span class="chip">Do gry trafi: <b>'+D.use.length+'</b> '+plPyt(D.use.length)+'</span></div>'+
-  '<div class="atabs"><button class="atab'+(tab==="set"?" on":"")+'" data-t="set">Ustawienia</button><button class="atab'+(tab==="q"?" on":"")+'" data-t="q">Pytania ('+D.questions.length+')</button></div>'}
- function draw(){var h=head()+(tab==="set"?settingsHtml():questionsHtml());show(h);wire();if(tab==="q")tex(document.getElementById("qlist"))}
+  '<div class="astat"><span class="chip">Tryb: <b>'+esc(setting("Tryb gry"))+'</b></span>'+(live?'<span class="chip">Gra na żywo: <b>'+esc(PH[g.phase]||g.phase)+'</b>'+(g.n&&g.i>=0?' · pytanie '+(g.i+1)+' z '+g.n:'')+'</span>':'')+(setting("Tryb gry").indexOf("Głosowanie")===0?'<span class="chip">Sesja: <b>'+({lobby:"strona startowa",topic:"temat "+((D.pgame||{}).i+1)+" z "+(D.pgame||{}).n,end:"zakończona"}[(D.pgame||{}).phase]||"")+'</b></span><span class="chip">Zestaw: <b>'+esc(setting("Zestaw głosowań i opinii")||"Wszystkie")+'</b></span>':'<span class="chip">Kategoria: <b>'+esc(setting("Kategoria do gry"))+'</b></span><span class="chip">Do gry trafi: <b>'+D.use.length+'</b> '+plPyt(D.use.length)+'</span>')+'</div>'+
+  '<div class="atabs"><button class="atab'+(tab==="set"?" on":"")+'" data-t="set">Ustawienia</button><button class="atab'+(tab==="q"?" on":"")+'" data-t="q">Pytania ('+D.questions.length+')</button><button class="atab'+(tab==="p"?" on":"")+'" data-t="p">Głosowania i opinie ('+(D.topics||[]).length+')</button></div>'}
+ function draw(){var h=head()+(tab==="set"?settingsHtml():tab==="p"?topicsHtml():questionsHtml());show(h);wire();if(tab==="q")tex(document.getElementById("qlist"))}
  /* --- ustawienia --- */
  function dtIn(v){return v?v.replace(" ","T"):""}
  function ctl(o,id){var v=dirty.hasOwnProperty(o.label)?dirty[o.label]:o.value;
@@ -486,6 +554,48 @@ function adminPage(){
   ov.onclick=function(e){if(e.target===ov)close()};
   document.getElementById("esave").onclick=function(){var o=val();run({op:"qsave",row:q?q.row:0,orig:q?q.v[1]:"",after:after||0,v:o},q?"Pytanie zapisane.":"Pytanie dodane.").then(function(ok){if(ok)close(true)})};
   setTimeout(function(){document.getElementById(q?"e1":"e1").focus()},30)}
+ /* --- tematy głosowań i opinii --- */
+ var PF={set:""};
+ function psets(){var a=[];D.topics.forEach(function(t){if(t.v[0]&&a.indexOf(t.v[0])<0)a.push(t.v[0])});return a}
+ function pkind(x){return String(x||"").toLowerCase().indexOf("opin")>=0?"opin":"vote"}
+ function pvisible(){return D.topics.filter(function(t){return!PF.set||t.v[0]===PF.set})}
+ function topicsHtml(){var ss=psets(),vis=pvisible(),set=setting("Zestaw głosowań i opinii")||"Wszystkie",live=setting("Tryb gry").indexOf("Głosowanie")===0,pg=D.pgame||{};
+  var h='<div class="abar" style="grid-template-columns:minmax(200px,300px) 1fr auto"><select class="ain" id="pfs"><option value="">Wszystkie zestawy ('+D.topics.length+')</option>'+ss.map(function(x){return'<option'+(PF.set===x?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select><span></span><button class="btn" id="pnew">+ Nowy temat</button></div>';
+  h+='<p class="sub ainfo">'+(live?'':'<span class="bad">Tryb gry nie jest ustawiony na „Głosowanie i opinie”.</span> ')+'Na ekranie pojawi się <b>'+D.puse.length+'</b> aktywnych tematów z zestawu „'+esc(set)+'” (ustawienie „Zestaw głosowań i opinii”), w kolejności z listy. Numer w zielonym kółku to numer strony na ekranie.'+(pg.phase==="topic"?' <span class="bad">Trwa sesja: usuwanie i zmiana kolejności są zablokowane.</span>':'')+'</p>';
+  h+='<div id="plist">'+(vis.length?vis.map(function(t,k){var v=t.v,on=v[9]!=="NIE",gi=D.puse.indexOf(t.row),kd=pkind(v[1]);
+   return'<div class="qrow'+(on?"":" off")+'" data-r="'+t.row+'"><label class="sw"><input type="checkbox" class="pact"'+(on?" checked":"")+'><span></span></label><div class="qpos">'+(gi>=0?'<span class="ing">'+(gi+1)+'</span>':'')+'<small>w. '+t.row+'</small></div>'+
+    '<div class="qbody"><div class="qmeta"><span class="qcat">'+esc(v[0])+'</span><span class="qkind">'+(kd==="opin"?"Opinia":"Głosowanie")+'</span></div><div class="qtext">'+esc(v[2])+'</div>'+(kd==="vote"?'<div class="qans">'+v.slice(3,9).filter(function(x){return x}).map(function(x,j){return'<span><b>'+(j+1)+'.</b> '+esc(x)+'</span>'}).join("")+'</div>':'<div class="qans"><span>Uczestnicy wpisują krótkie opinie (do 280 znaków).</span></div>')+'</div>'+
+    '<div class="qact2"><button class="ib" data-a="up"'+(k===0?" disabled":"")+' title="W górę">↑</button><button class="ib" data-a="down"'+(k===vis.length-1?" disabled":"")+' title="W dół">↓</button><button class="ib" data-a="ins" title="Nowy temat pod tym">＋</button><button class="ib" data-a="del" title="Usuń temat">✕</button></div></div>'}).join(""):'<div class="msg">Nie ma jeszcze tematów. Dodaj pierwszy przyciskiem „+ Nowy temat”, np. „Mocne strony wystąpienia” (opinia) albo „Jak oceniasz prelegenta?” (głosowanie).</div>')+'</div>';
+  return h}
+ function pbyRow(r){var x=null;D.topics.forEach(function(t){if(t.row===r)x=t});return x}
+ function topicEditor(t,after){var v=t?t.v.slice():[PF.set||(setting("Zestaw głosowań i opinii")!=="Wszystkie"&&setting("Zestaw głosowań i opinii"))||"","Głosowanie","","","","","","","","TAK"];while(v.length<10)v.push("");var kd=pkind(v[1]);
+  var ov=document.createElement("div");ov.className="aover";
+  ov.innerHTML='<div class="amodal" role="dialog" aria-label="Edycja tematu"><div class="ahead" style="margin:0 0 10px"><h2>'+(t?'Temat z wiersza '+t.row:'Nowy temat'+(after?' (pod wierszem '+after+')':' (na końcu listy)'))+'</h2><button class="ib" id="px" title="Zamknij">✕</button></div><div class="aform">'+
+   '<div class="afield"><label class="alab" for="p0">Zestaw <small>(np. „Seminarium 3 grudnia”)</small></label><input class="ain" id="p0" list="p0l" value="'+esc(v[0])+'"><datalist id="p0l">'+psets().map(function(x){return'<option value="'+esc(x)+'">'}).join("")+'</datalist></div>'+
+   '<div class="afield"><label class="alab" for="p9">Aktywny</label><select class="ain" id="p9"><option'+(v[9]!=="NIE"?" selected":"")+'>TAK</option><option'+(v[9]==="NIE"?" selected":"")+'>NIE</option></select></div>'+
+   '<div class="afield wide"><label class="alab">Rodzaj</label><div class="akinds" style="grid-template-columns:1fr 1fr">'+[["vote","Głosowanie","Wybór jednej z opcji, wyniki jako wykres"],["opin","Opinia","Krótkie wypowiedzi w chmurze na ekranie"]].map(function(x){return'<label class="akind"><input type="radio" name="pk" value="'+x[1]+'"'+(kd===x[0]?" checked":"")+'><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span></label>'}).join("")+'</div></div>'+
+   '<div class="afield wide"><label class="alab" for="p2">Temat</label><textarea class="ain" id="p2" rows="2">'+esc(v[2])+'</textarea></div>'+
+   '<div class="wide" id="popts"><p class="alab">Opcje <small>(od 2 do 6; puste pola są pomijane)</small></p>'+[3,4,5,6,7,8].map(function(j){return'<div class="afield"><input class="ain" id="p'+j+'" value="'+esc(v[j])+'" placeholder="Opcja '+(j-2)+'"></div>'}).join("")+'</div></div>'+
+   '<div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" id="pcan">Anuluj</button><button class="btn" id="psave">'+(t?'Zapisz':'Dodaj temat')+'</button></div></div>';
+  document.body.appendChild(ov);
+  function kin(){var r=ov.querySelector('input[name=pk]:checked');return r?r.value:"Głosowanie"}
+  function vis(){document.getElementById("popts").style.display=pkind(kin())==="vote"?"":"none"}
+  function val(){var o=[];for(var j=0;j<10;j++){var e=document.getElementById("p"+j);o[j]=e?e.value:""}o[1]=kin();return o}
+  var dirtyE=false;ov.addEventListener("input",function(){dirtyE=true});ov.addEventListener("change",vis);vis();
+  function close(f){if(!f&&dirtyE&&!confirm("Porzucić niezapisane zmiany w temacie?"))return;ov.remove()}
+  document.getElementById("px").onclick=function(){close()};document.getElementById("pcan").onclick=function(){close()};ov.onclick=function(e){if(e.target===ov)close()};
+  document.getElementById("psave").onclick=function(){run({op:"psave",row:t?t.row:0,orig:t?t.v[2]:"",after:after||0,v:val()},t?"Temat zapisany.":"Temat dodany.").then(function(ok){if(ok)close(true)})};
+  setTimeout(function(){document.getElementById("p2").focus()},30)}
+ function wireP(){
+  document.getElementById("pfs").onchange=function(){PF.set=this.value;draw()};document.getElementById("pnew").onclick=function(){topicEditor(null,0)};
+  var vis=pvisible();
+  Array.prototype.forEach.call(document.querySelectorAll("#plist .qrow"),function(rw){var r=+rw.getAttribute("data-r"),t=pbyRow(r);
+   rw.querySelector(".pact").onchange=function(){var on=this.checked;run({op:"pactive",row:r,orig:t.v[2],value:on?"TAK":"NIE"},on?"Temat włączony.":"Temat wyłączony.").then(function(ok){if(!ok)draw()})};
+   rw.querySelector(".qbody").onclick=function(){topicEditor(t,0)};
+   Array.prototype.forEach.call(rw.querySelectorAll("[data-a]"),function(b){b.onclick=function(e){e.stopPropagation();var a=b.getAttribute("data-a"),k=-1;vis.forEach(function(x,j){if(x.row===r)k=j});
+    if(a==="ins"){topicEditor(null,r);return}
+    if(a==="del"){if(confirm("Usunąć temat z wiersza "+r+"?\n\n„"+t.v[2]+"”"))run({op:"pdelete",row:r,orig:t.v[2]},"Temat usunięty.");return}
+    var o=vis[a==="up"?k-1:k+1];if(o)run({op:"pmove",row:r,orig:t.v[2],to:o.row},"Kolejność zmieniona.")}})})}
  /* --- obsługa zdarzeń --- */
  function wire(){
   Array.prototype.forEach.call(document.querySelectorAll(".atab"),function(b){b.onclick=function(){if(tab==="set"&&Object.keys(dirty).length&&b.getAttribute("data-t")!=="set"&&!confirm("Masz niezapisane zmiany w ustawieniach. Przejść mimo to? Zmiany zostaną zachowane do czasu odświeżenia."))return;tab=b.getAttribute("data-t");ls("admtab",tab);draw()}});
@@ -493,6 +603,7 @@ function adminPage(){
   document.getElementById("aout").onclick=function(){ls("pin","");pin="";D=null;login("")};
   if(tab==="set"){D.settings.forEach(function(o,k){var el=document.getElementById("f"+k);if(el){el.oninput=el.onchange=function(){if(el.value==="__own__"){own[o.label]=1;draw();var n=document.getElementById("f"+k);if(n){n.focus();n.select()}return}onField(o,el)}}});
    document.getElementById("ssave").onclick=saveSettings;document.getElementById("sdrop").onclick=function(){dirty={};own={};applyPal(setting("Paleta kolorów"));draw()};return}
+  if(tab==="p"){wireP();return}
   document.getElementById("fcat").onchange=function(){F.cat=this.value;draw()};document.getElementById("fst").onchange=function(){F.st=this.value;draw()};
   var fq=document.getElementById("fq"),ft=null;fq.oninput=function(){var v=this.value;clearTimeout(ft);ft=setTimeout(function(){F.q=v;draw();var e=document.getElementById("fq");e.focus();e.setSelectionRange(v.length,v.length)},300)};
   document.getElementById("qnew").onclick=function(){editor(null,0)};
@@ -509,12 +620,13 @@ function adminPage(){
 
 /* ---------- Start ---------- */
 function boot(){
- if(hash==="tv"){tvPage();return}
+ if(hash==="tv"){get("action=config").then(function(c){setT(c);if(c.mode==="poll")tvPoll();else tvPage()}).catch(function(){tvPage()});return}
  if(hash==="admin"){adminPage();return}
  if(hash==="gp"){gpPage();return}
  if(hash==="qr"){document.body.className="host";show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Zeskanuj i zagraj</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu. Bez logowania.</p><p class="sub">'+esc(pageUrl())+'</p></div></div>');qr(document.getElementById("qr"),380);return}
  show('<p class="sub">Ładowanie quizu…</p>');
  get("action=config").then(function(c){setT(c);
+  if(c.mode==="poll"){pollPlayer();return}
   if(c.mode==="live"){livePlayer();return}
   if(c.win&&c.win.status!=="open"){closedScreen(c.win);return}
   get("action=questions").then(function(d){

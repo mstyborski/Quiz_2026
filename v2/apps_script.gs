@@ -42,7 +42,8 @@ function cfg_() {
   rows.forEach(function (r) { if (r[0] !== '') c[String(r[0]).trim()] = r[1]; });
   var open = c['Odblokowane pytania (tryb dowolny)'];
   return {
-    mode: c['Tryb gry'] === 'Na żywo' ? 'live' : 'free',
+    mode: c['Tryb gry'] === 'Na żywo' ? 'live' : (String(c['Tryb gry'] || '').indexOf('Głosowanie') === 0 ? 'poll' : 'free'),
+    pset: String(c['Zestaw głosowań i opinii'] || 'Wszystkie').trim() || 'Wszystkie',
     category: String(c['Kategoria do gry'] || 'Wszystkie'),
     time: Number(c['Czas na pytanie (s)']) || 20,
     phone: String(c['Telefon w trybie na żywo pokazuje'] || '').indexOf('Tylko') === 0 ? 'buttons' : 'full',
@@ -657,6 +658,7 @@ function doGet(e) {
     return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: pick_(c, freeSeed_(c)).map(function (q) { return pubQ_(q, c, true); }) }, c));
   }
   if (action === 'state') return json_(withMeta_(stateOut_(p), c));
+  if (action === 'pstate') return json_(withMeta_(pStateOut_(p, c), c));
   if (action === 'gp') return json_(withMeta_(gpPublic_(c, String(p.name || '').slice(0, 20)), c));
   if (action === 'gpquestions') return json_(withMeta_(gpQuestions_(c, p), c));
   if (action === 'gpsubmit') return json_(gpSubmit_(c, p));
@@ -685,7 +687,9 @@ function doPost(e) {
     try { writeRankSheet_('Tryb dowolny · ' + c.title + (c.sub ? ' · ' + c.sub : '') + ' ' + (c.freeBest ? '(najlepszy wynik gracza)' : '(pierwsza próba gracza)'), freeRanking_(c), uidMap_('free')); } catch (e) {}
     return json_({ ok: 1 });
   }
+  if (type === 'host' && String(d.cmd || '').charAt(0) === 'p') return json_(pHost_(d, c));
   if (type === 'host') return json_(host_(d, c));
+  if (type === 'pvote' || type === 'popin') return json_(pAnswer_(d, c));
   if (type === 'admin') return json_(admin_(d, c));
   var st = getState_(), name = String(d.name || '').slice(0, 20);
   if (!name) return json_({ ok: 0 });
@@ -783,6 +787,10 @@ function admin_(d, c) {
       else if (op === 'qactive') r = admQActive_(d);
       else if (op === 'qdelete') r = admQShift_(d, 'delete');
       else if (op === 'qmove') r = admQShift_(d, 'move');
+      else if (op === 'psave') r = admPSave_(d);
+      else if (op === 'pactive') r = admPActive_(d);
+      else if (op === 'pdelete') r = admPShift_(d, 'delete');
+      else if (op === 'pmove') r = admPShift_(d, 'move');
       else return { ok: 0, error: 'Nieznana operacja' };
       if (!r.ok) return r;
     } finally { lock.releaseLock(); }
@@ -842,6 +850,7 @@ function admLoad_(c) {
   var st = getState_(), media = [];
   try { media = Object.keys(folderMap_(c)).filter(function (n) { return /\.[a-z0-9]{2,5}$/.test(n); }).sort(); } catch (e) {}
   return { ok: 1, settings: admSettings_(), categories: admCategories_(), questions: admQuestions_(), media: media,
+    topics: admPTopics_(), pgame: (function (ps) { return { phase: ps.phase, i: ps.i, n: ps.ids.length }; })(getP_()), puse: ptopics_(c.pset).map(function (t) { return t.id; }),
     game: { phase: st.phase, i: st.i, n: st.ids.length, active: admGameActive_() },
     use: pick_(c, 'g' + Date.now()).map(function (q) { return q.id; }), random: c.random, title: c.title, sub: c.sub };
 }
@@ -926,6 +935,191 @@ function admQShift_(d, kind) {
   var to = Number(d.to) || (row + (Number(d.dir) < 0 ? -1 : 1));
   if (to < 2 || to > s.getLastRow() || to === row) return { ok: 1 };
   var lo = Math.min(row, to), n = Math.abs(to - row) + 1, rg = s.getRange(lo, 1, n, ADM_FIELDS), b = rg.getValues();
+  if (row < to) b.push(b.shift()); else b.unshift(b.pop());
+  rg.setValues(b);
+  return { ok: 1 };
+}
+
+
+// ======================= GŁOSOWANIE I OPINIE =======================
+// Karta „Ankiety”: A Zestaw, B Rodzaj (Głosowanie / Opinia), C Temat, D–I Opcje 1–6 (głosowanie), J Aktywne.
+// Karta „Odpowiedzi ankiet”: Czas, Sesja, Temat (nr strony), Kod urządzenia, Rodzaj (G/O), Wartość, Id opinii, Ukryta.
+// Uczestnicy są anonimowi: na ekranie nie ma pseudonimów, urządzenie rozpoznaje losowy kod.
+var PTOP = 'Ankiety', PANS = 'Odpowiedzi ankiet', PCOLS = 10, PMAXLEN = 280, PMAXOP = 20;
+var PHEAD = ['Zestaw', 'Rodzaj (Głosowanie / Opinia)', 'Temat', 'Opcja 1', 'Opcja 2', 'Opcja 3', 'Opcja 4', 'Opcja 5', 'Opcja 6', 'Aktywne'];
+
+function pSheet_() {
+  var s = sh_(PTOP);
+  if (!s) { s = SpreadsheetApp.getActive().insertSheet(PTOP); s.getRange(1, 1, 1, PCOLS).setValues([PHEAD]); s.setFrozenRows(1); }
+  return s;
+}
+function pkind_(v) { return String(v || '').toLowerCase().indexOf('opin') >= 0 ? 'opin' : 'vote'; }
+function ptopics_(set) {
+  var s = sh_(PTOP), out = [];
+  if (!s || s.getLastRow() < 2) return out;
+  s.getRange(2, 1, s.getLastRow() - 1, PCOLS).getValues().forEach(function (r, k) {
+    if (!r[2] || String(r[9]).toUpperCase() === 'NIE') return;
+    if (set && set !== 'Wszystkie' && String(r[0]).trim() !== set) return;
+    var t = { id: k + 2, set: String(r[0]).trim(), kind: pkind_(r[1]), t: String(r[2]).trim(),
+      o: r.slice(3, 9).map(String).map(function (x) { return x.trim(); }).filter(function (x) { return x; }) };
+    if (t.kind === 'vote' && t.o.length < 2) return;
+    out.push(t);
+  });
+  return out;
+}
+function ptopicById_(id) { var a = ptopics_('Wszystkie'); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+function getP_() { var v = PropertiesService.getScriptProperties().getProperty('pstate'); return v ? JSON.parse(v) : { sid: 'p0', phase: 'lobby', i: -1, ids: [] }; }
+function setP_(ps) { PropertiesService.getScriptProperties().setProperty('pstate', JSON.stringify(ps)); }
+
+// Odpowiedzi bieżącej strony (z pamięci podręcznej na 2 s): [kod, rodzaj, wartość, id, ukryta]
+function pRows_(sid, i) {
+  var cache = CacheService.getScriptCache(), ck = 'pr|' + sid + '|' + i, hit = cache.get(ck);
+  if (hit) return JSON.parse(hit);
+  var s = sh_(PANS), out = [];
+  if (s && s.getLastRow() >= 2) s.getRange(2, 1, s.getLastRow() - 1, 8).getValues().forEach(function (r) {
+    if (String(r[1]) === sid && Number(r[2]) === i) out.push([String(r[3]), String(r[4]), String(r[5]), String(r[6]), String(r[7]) === 'TAK' ? 1 : 0]);
+  });
+  try { cache.put(ck, JSON.stringify(out), 2); } catch (e) {}
+  return out;
+}
+function pAgg_(t, rows) {
+  if (t.kind === 'vote') {
+    var last = {}, d = t.o.map(function () { return 0; });
+    rows.forEach(function (r) { if (r[1] === 'G') last[r[0]] = Number(r[2]); });
+    Object.keys(last).forEach(function (k) { var v = last[k]; if (v >= 0 && v < d.length) d[v]++; });
+    return { counts: d, voters: Object.keys(last).length };
+  }
+  var ops = rows.filter(function (r) { return r[1] === 'O' && !r[4]; }).map(function (r) { return { id: r[3], text: r[2] }; });
+  return { opinions: ops.slice(-300), authors: Object.keys(rows.reduce(function (m, r) { if (r[1] === 'O') m[r[0]] = 1; return m; }, {})).length, total: ops.length };
+}
+function pStateOut_(p, c) {
+  var ps = getP_(), out = { mode: c.mode, sid: ps.sid, phase: ps.phase, i: ps.i, n: ps.ids.length, now: Date.now() };
+  if (ps.phase === 'topic' && ps.i >= 0 && ps.i < ps.ids.length) {
+    var t = ptopicById_(ps.ids[ps.i]);
+    if (t) {
+      out.t = { kind: t.kind, t: t.t, o: t.o };
+      var rows = pRows_(ps.sid, ps.i), agg = pAgg_(t, rows);
+      if (p.full) out.agg = agg;
+      else out.agg = t.kind === 'vote' ? { voters: agg.voters } : { authors: agg.authors };
+      if (p.tok) {
+        var mine = rows.filter(function (r) { return r[0] === String(p.tok); });
+        if (t.kind === 'vote') { var g = mine.filter(function (r) { return r[1] === 'G'; }).pop(); out.mine = g ? Number(g[2]) : null; }
+        else out.mine = mine.filter(function (r) { return r[1] === 'O'; }).length;
+      }
+    }
+  }
+  return out;
+}
+function pAnswer_(d, c) {
+  var ps = getP_(), tok = String(d.tok || '').slice(0, 60);
+  if (!tok) return { ok: 0 };
+  if (ps.phase !== 'topic' || String(d.sid) !== ps.sid || Number(d.i) !== ps.i) return { ok: 0, late: 1 };
+  var t = ptopicById_(ps.ids[ps.i]);
+  if (!t) return { ok: 0 };
+  var cache = CacheService.getScriptCache(), lk = LockService.getScriptLock(), row;
+  if (d.type === 'pvote') {
+    var ch = Number(d.choice);
+    if (t.kind !== 'vote' || !(ch >= 0 && ch < t.o.length && ch === Math.floor(ch))) return { ok: 0 };
+    row = [new Date(), ps.sid, ps.i, tok, 'G', ch, '', ''];
+  } else {
+    var text = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, PMAXLEN), cid = String(d.cid || '').slice(0, 40);
+    if (t.kind !== 'opin' || !text || !cid) return { ok: 0 };
+    if (cache.get('pc|' + cid)) return { ok: 1, dup: 1 };                     // ponowienie tej samej opinii
+    if (pRows_(ps.sid, ps.i).filter(function (r) { return r[0] === tok && r[1] === 'O'; }).length >= PMAXOP) return { ok: 0, limit: 1 };
+    row = [new Date(), ps.sid, ps.i, tok, 'O', /^[=+\-@]/.test(text) ? "'" + text : text, cid, ''];
+  }
+  lk.waitLock(10000);
+  try {
+    var s = sh_(PANS);
+    if (!s) { s = SpreadsheetApp.getActive().insertSheet(PANS); s.appendRow(['Czas', 'Sesja', 'Temat (nr)', 'Kod urządzenia', 'Rodzaj', 'Wartość', 'Id opinii', 'Ukryta']); s.setFrozenRows(1); }
+    s.appendRow(row);
+    SpreadsheetApp.flush();
+    if (d.type === 'popin') cache.put('pc|' + row[6], '1', 21600);
+    cache.remove('pr|' + ps.sid + '|' + ps.i);
+  } finally { lk.releaseLock(); }
+  return { ok: 1 };
+}
+function pHost_(d, c) {
+  if (c.pin && String(d.pin) !== c.pin) return { ok: 0, error: 'pin' };
+  var ps = getP_(), cmd = d.cmd, lk = LockService.getScriptLock(); lk.waitLock(5000);
+  try {
+    if (cmd === 'pstart') {
+      var ids = ptopics_(c.pset).map(function (t) { return t.id; });
+      if (!ids.length) return { ok: 0, error: 'Brak aktywnych tematów w zestawie „' + c.pset + '”.' };
+      ps = { sid: 'p' + Date.now(), phase: 'topic', i: 0, ids: ids };
+    } else if (cmd === 'pnext') { if (ps.phase === 'topic') { if (ps.i + 1 < ps.ids.length) ps.i++; else ps.phase = 'end'; } }
+    else if (cmd === 'pprev') { if (ps.phase === 'end') ps.phase = 'topic'; else if (ps.i > 0) ps.i--; }
+    else if (cmd === 'pend') ps.phase = 'end';
+    else if (cmd === 'preset') ps = { sid: 'p' + Date.now(), phase: 'lobby', i: -1, ids: [] };
+    else if (cmd === 'phide') {   // moderacja: ukrycie opinii z ekranu (zostaje w arkuszu z oznaczeniem)
+      var s = sh_(PANS), oid = String(d.oid || '');
+      if (s && oid && s.getLastRow() >= 2) {
+        var col = s.getRange(2, 7, s.getLastRow() - 1, 1).getValues();
+        for (var k = 0; k < col.length; k++) if (String(col[k][0]) === oid) { s.getRange(k + 2, 8).setValue('TAK'); break; }
+      }
+      CacheService.getScriptCache().remove('pr|' + ps.sid + '|' + ps.i);
+      return { ok: 1 };
+    } else return { ok: 0 };
+    setP_(ps);
+  } finally { lk.releaseLock(); }
+  return { ok: 1, phase: ps.phase, i: ps.i };
+}
+
+// --- panel: tematy głosowań i opinii ---
+function admPTopics_() {
+  var s = pSheet_(), out = [];
+  if (s.getLastRow() < 2) return out;
+  s.getRange(2, 1, s.getLastRow() - 1, PCOLS).getValues().forEach(function (r, k) {
+    if (r.every(function (x) { return x === ''; })) return;
+    out.push({ row: k + 2, v: r.map(admFmt_) });
+  });
+  return out;
+}
+function admPCheck_(s, row, orig) {
+  row = Number(row);
+  if (!(row >= 2) || row > s.getLastRow()) return 'Temat nie istnieje (wiersz ' + row + ').';
+  if (String(s.getRange(row, 3).getValue()) !== String(orig)) return 'Temat w wierszu ' + row + ' zmienił się w międzyczasie. Odśwież listę.';
+  return '';
+}
+function pActive_() { return getP_().phase === 'topic'; }
+function admPSave_(d) {
+  var s = pSheet_(), v = (d.v || []).slice(0, PCOLS).map(function (x) { return String(x === undefined ? '' : x).trim(); });
+  while (v.length < PCOLS) v.push('');
+  v[1] = pkind_(v[1]) === 'opin' ? 'Opinia' : 'Głosowanie';
+  v[9] = v[9].toUpperCase() === 'NIE' ? 'NIE' : 'TAK';
+  if (!v[0]) v[0] = 'Ogólny';
+  if (!v[2]) return { ok: 0, error: 'Podaj temat.' };
+  if (v[1] === 'Głosowanie') {
+    var opts = v.slice(3, 9).filter(function (x) { return x; });
+    if (opts.length < 2) return { ok: 0, error: 'Głosowanie wymaga co najmniej dwóch opcji.' };
+    for (var k = 3; k < 9; k++) v[k] = opts[k - 3] || '';
+  } else for (var j = 3; j < 9; j++) v[j] = '';
+  var row = Number(d.row) || 0;
+  if (row) { var e = admPCheck_(s, row, d.orig); if (e) return { ok: 0, error: e }; }
+  else {
+    var after = Number(d.after) || 0;
+    if (after >= 2 && after < s.getLastRow()) {
+      if (pActive_()) return { ok: 0, error: 'Trwa sesja głosowania: nowy temat można dodać tylko na końcu listy.' };
+      s.insertRowAfter(after); row = after + 1;
+    } else row = s.getLastRow() + 1;
+  }
+  s.getRange(row, 1, 1, PCOLS).setValues([v.map(function (x) { return /^[=+]/.test(x) ? "'" + x : x; })]);
+  return { ok: 1 };
+}
+function admPActive_(d) {
+  var s = pSheet_(), e = admPCheck_(s, d.row, d.orig);
+  if (e) return { ok: 0, error: e };
+  s.getRange(Number(d.row), 10).setValue(String(d.value).toUpperCase() === 'NIE' ? 'NIE' : 'TAK');
+  return { ok: 1 };
+}
+function admPShift_(d, kind) {
+  if (pActive_()) return { ok: 0, error: 'Trwa sesja głosowania. Usuwanie i zmiana kolejności tematów są możliwe przed startem albo po zakończeniu.' };
+  var s = pSheet_(), row = Number(d.row), e = admPCheck_(s, row, d.orig);
+  if (e) return { ok: 0, error: e };
+  if (kind === 'delete') { s.deleteRow(row); return { ok: 1 }; }
+  var to = Number(d.to) || row;
+  if (to < 2 || to > s.getLastRow() || to === row) return { ok: 1 };
+  var lo = Math.min(row, to), rg = s.getRange(lo, 1, Math.abs(to - row) + 1, PCOLS), b = rg.getValues();
   if (row < to) b.push(b.shift()); else b.unshift(b.pop());
   rg.setValues(b);
   return { ok: 1 };
