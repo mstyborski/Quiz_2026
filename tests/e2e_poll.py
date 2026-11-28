@@ -43,7 +43,7 @@ with sync_playwright() as p:
     for k in range(3):
         pg = page(390, 800); pg.goto(B + "/v2/"); pg.wait_for_selector("text=Jesteś połączony"); P.append(pg)
     check("telefon: dołączenie bez pseudonimu", True)
-    check("nagłówek „Głosowanie i opinie” zamiast nazwy quizu", "GŁOSOWANIE I OPINIE" in P[0].inner_text(".eyebrow").upper() and "Quiz" not in P[0].inner_text(".eyebrow") and P[0].title().startswith("Głosowanie i opinie") and tv.title().startswith("Głosowanie i opinie"))
+    check("nagłówek „Głosowanie i opinie” zamiast nazwy quizu", "GŁOSOWANIE I OPINIE" in P[0].inner_text(".eyebrow").upper() and "Quiz" not in P[0].inner_text(".eyebrow") and P[0].title() == "Q · Głosowanie i opinie" and tv.title() == "Q · Ekran prowadzącego")
     check("panel: nagłówek „Głosowanie i opinie”", "Głosowanie i opinie" in ad.inner_text("h1"))
     tv.click('[data-c="pstart"]'); P[0].wait_for_selector("button.tile")
     check("sesja obejmuje tylko wybrany zestaw (2 tematy)", pst()["n"] == 2)

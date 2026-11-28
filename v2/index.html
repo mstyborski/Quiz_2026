@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0F2A43">
-<title>Quiz żeglarski – Podsumowanie Sezonu 2026</title>
+<title>Q</title>
 <style>
 :root{--bg:#0F2A43;--card:#17395A;--text:#F4F1EA;--muted:#C9D6E2;--accent:#F09A5E;--btn:#E8742B;--btntext:#0F2A43;--border:#4A6A8A;--bar:#2C5C8A;--hostbar:#0b1e31;--ok:#6FD08C;--bad:#FF9A8A;--pick:#FFFFFF}
 .logo{display:block;max-height:60px;max-width:60%;margin:0 0 14px}.host .logo{max-height:110px}
@@ -184,7 +184,9 @@ var PAL={"Morska":{},"Jasna":{bg:"#F6F4EF",card:"#FFFFFF",text:"#1B2A3A",muted:"
 "Granat i czerwień":{bg:"#0B1F3A",card:"#14325A",text:"#F4F4F6",muted:"#C7D2E0",accent:"#FF6B6B",btn:"#E63946",btntext:"#FFFFFF",border:"#476A96",bar:"#2B5A94",hostbar:"#07152A",ok:"#6FD08C",bad:"#FFB3A8"}};
 var palKey="";
 function applyPal(n){if(n===palKey)return;palKey=n;var base=PAL["Morska"],p=PAL[n]||base,r=document.documentElement.style,k;var all={bg:"#0F2A43",card:"#17395A",text:"#F4F1EA",muted:"#C9D6E2",accent:"#F09A5E",btn:"#E8742B",btntext:"#0F2A43",border:"#4A6A8A",bar:"#2C5C8A",hostbar:"#0b1e31",ok:"#6FD08C",bad:"#FF9A8A",pick:"#FFFFFF"};for(k in all)r.setProperty("--"+k,p[k]||all[k])}
-function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";document.title=QT+(QS?" – "+QS:"")}if(d){LOGO=d.logo||"";IDL=d.idl||null;if(d.brk)BRK=d.brk;applyPal(d.palette||"")}}
+/* Tytuł karty: „Q · <widok>”, niezależnie od nazwy quizu i wydarzenia */
+function tabTitle(mode){var h=location.hash.replace("#","");document.title="Q · "+(h==="admin"?"Panel sterowania":h==="tv"?"Ekran prowadzącego":h==="gp"?"Grand Prix":mode==="poll"?"Głosowanie i opinie":"Quiz")}
+function setT(d){if(d&&d.title){QT=d.title;QS=d.sub||"";tabTitle(d.mode)}if(d){LOGO=d.logo||"";IDL=d.idl||null;if(d.brk)BRK=d.brk;applyPal(d.palette||"")}}
 var QMARK='<svg class="amark" role="img" aria-label="Logo quizu" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F2A43"/><circle cx="31" cy="30" r="17" fill="none" stroke="#F4F1EA" stroke-width="8"/><path d="M38 38 L50 50" stroke="#E8742B" stroke-width="9" stroke-linecap="round"/></svg>';
 var SYM=["▲","◆","●","■"],LET=["A","B","C","D"];
 var app=document.getElementById("app"),hash=location.hash.replace("#","");
@@ -363,7 +365,7 @@ function tvPage(){
 
 /* W trybie głosowania nagłówek i tytuł karty to „Głosowanie i opinie” (zamiast nazwy quizu). */
 var PT="Głosowanie i opinie";
-function setP(d){setT(d);QT=PT;document.title=PT+(QS?" – "+QS:"")}
+function setP(d){setT(d);QT=PT;tabTitle("poll")}
 /* ---------- Głosowanie i opinie: telefon (anonimowo, bez pseudonimu) ---------- */
 function pollPlayer(){
  var st=null,struct="",sel={},pend={},sent={},opq={};
@@ -623,6 +625,7 @@ function adminPage(){
 
 /* ---------- Start ---------- */
 function boot(){
+ tabTitle("");
  if(hash==="tv"){get("action=config").then(function(c){setT(c);if(c.mode==="poll"){setP(c);tvPoll()}else tvPage()}).catch(function(){tvPage()});return}
  if(hash==="admin"){adminPage();return}
  if(hash==="gp"){gpPage();return}
