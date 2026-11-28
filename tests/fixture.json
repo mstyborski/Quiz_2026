@@ -53,6 +53,10 @@
      "Tak"
     ],
     [
+     "Ponowne głosowanie (peer instruction)",
+     "Nie"
+    ],
+    [
      "Telefon w trybie na żywo pokazuje",
      "Pytanie i odpowiedzi"
     ],
@@ -227,21 +231,21 @@
      ],
      "strict": true
     },
-    "14:2": {
+    "15:2": {
      "list": [
       "Tylko przyciski A–D",
       "Pytanie i odpowiedzi"
      ],
      "strict": true
     },
-    "16:2": {
+    "17:2": {
      "list": [
       "Tak",
       "Nie"
      ],
      "strict": true
     },
-    "19:2": {
+    "20:2": {
      "list": [
       "Morska",
       "Jasna",
@@ -253,14 +257,14 @@
      ],
      "strict": true
     },
-    "22:2": {
+    "23:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "26:2": {
+    "27:2": {
      "list": [
       "Wszystkie",
       "0",
@@ -269,7 +273,7 @@
      ],
      "strict": false
     },
-    "29:2": {
+    "30:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -279,25 +283,25 @@
      ],
      "strict": true
     },
-    "30:2": {
+    "31:2": {
      "list": [
       "Najlepszy wynik",
       "Tylko pierwsza próba"
      ],
      "strict": true
     },
-    "32:2": {
+    "33:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "35:2": {
+    "36:2": {
      "range": "Kategorie!$A$2:$A$20",
      "strict": true
     },
-    "36:2": {
+    "37:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -307,10 +311,17 @@
      ],
      "strict": true
     },
-    "37:2": {
+    "38:2": {
      "list": [
       "Najlepszy wynik z rundy",
       "Tylko pierwsza próba"
+     ],
+     "strict": true
+    },
+    "14:2": {
+     "list": [
+      "Nie",
+      "Tak"
      ],
      "strict": true
     }
@@ -457,6 +468,57 @@
      "$r^2$",
      "C",
      "TAK",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Test rodzajów",
+     "Każda funkcja ciągła na [0,1] jest jednostajnie ciągła.",
+     "Prawda",
+     "Fałsz",
+     "",
+     "",
+     "A",
+     "TAK",
+     "Tekst",
+     "",
+     "",
+     "Prawda/Fałsz",
+     "Twierdzenie Heinego–Cantora.",
+     "",
+     ""
+    ],
+    [
+     "Test rodzajów",
+     "Ilu kursantów zdobyło patent?",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "TAK",
+     "Tekst",
+     "",
+     "",
+     "Liczba",
+     "Dane z biura szkoleń.",
+     "29",
+     "2"
+    ],
+    [
+     "Test rodzajów",
+     "Stolica Polski?",
+     "Kraków",
+     "Warszawa",
+     "Gdańsk",
+     "Poznań",
+     "B",
+     "TAK",
+     "Tekst",
+     "",
+     "",
+     "",
      "",
      "",
      ""
@@ -1551,6 +1613,9 @@
     ],
     [
      "Analiza matematyczna 3"
+    ],
+    [
+     "Test rodzajów"
     ]
    ]
   },

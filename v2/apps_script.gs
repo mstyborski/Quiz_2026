@@ -61,6 +61,7 @@ function cfg_() {
     freeLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Tryb dowolny: limit prób']),
     freeBest: String(c['Tryb dowolny: zasada punktów'] || '').indexOf('Tylko') !== 0,
     random: c['Losowa kolejność pytań'] === 'Tak',
+    peer: c['Ponowne głosowanie (peer instruction)'] === 'Tak',
     round: (function (v) { var n = Number(v); return isNaN(n) || n <= 0 ? 0 : Math.floor(n); })(c['Runda quizu']),
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
     freeTo: toDate_(c['Tryb dowolny: otwarty do']),
@@ -97,16 +98,47 @@ function freeSeed_(c) {
 function questions_(category) {
   var s = sh_('Pytania'), last = s.getLastRow();
   if (last < 2) return [];
-  var rows = s.getRange(2, 1, last - 1, 11).getValues(), out = [];
+  var rows = s.getRange(2, 1, last - 1, QCOLS).getValues(), out = [];
   rows.forEach(function (r, k) {
     if (!r[1] || String(r[7]).toUpperCase() !== 'TAK') return;
     if (category && category !== 'Wszystkie' && String(r[0]) !== category) return;
-    var c = 'ABCD'.indexOf(String(r[6]).trim().toUpperCase());
-    if (c < 0) return;
-    out.push({ id: k + 2, cat: String(r[0]), q: String(r[1]).trim(), o: [r[2], r[3], r[4], r[5]].map(String), c: c,
-      typ: String(r[8] || 'Tekst').trim(), src: String(r[9] || '').trim(), cap: String(r[10] || '').trim() });
+    var kind = kind_(r[11]), q = { id: k + 2, cat: String(r[0]), q: String(r[1]).trim(), kind: kind,
+      typ: String(r[8] || 'Tekst').trim(), src: String(r[9] || '').trim(), cap: String(r[10] || '').trim(), expl: String(r[12] || '').trim() };
+    if (kind === 'num') {
+      q.val = num_(r[13]); q.tol = Math.abs(num_(r[14])) || 0; q.o = []; q.c = -1;
+      if (!isFinite(q.val)) return;
+    } else {
+      q.o = kind === 'tf' ? [String(r[2] || 'Prawda'), String(r[3] || 'Fałsz')] : [r[2], r[3], r[4], r[5]].map(String);
+      q.c = 'ABCD'.indexOf(String(r[6]).trim().toUpperCase());
+      if (q.c < 0 || q.c >= q.o.length) return;
+    }
+    out.push(q);
   });
   return out;
+}
+
+// Kolumny karty Pytania: A Kategoria, B Pytanie, C–F odpowiedzi A–D, G Poprawna, H Aktywne, I Typ (multimedia),
+// J Źródło, K Podpis, L Rodzaj odpowiedzi, M Wyjaśnienie, N Wartość poprawna (Liczba), O Tolerancja (Liczba)
+var QCOLS = 15;
+var QHEAD = ['Rodzaj odpowiedzi (A–D / Prawda/Fałsz / Liczba)', 'Wyjaśnienie po odpowiedzi', 'Wartość poprawna (Liczba)', 'Tolerancja (Liczba)'];
+function kind_(v) { v = String(v || '').toLowerCase(); return v.indexOf('prawda') >= 0 ? 'tf' : (v.indexOf('liczb') >= 0 ? 'num' : 'choice'); }
+function num_(v) { if (typeof v === 'number') return v; var s = String(v === undefined || v === null ? '' : v).replace(/\s/g, '').replace(',', '.'); return s === '' ? NaN : Number(s); }
+
+// Punkty za odpowiedź: 500 za poprawność + do 500 za szybkość. Liczba: poprawna, gdy błąd ≤ tolerancja;
+// im bliżej wartości dokładnej, tym więcej punktów (na granicy tolerancji połowa).
+function score_(q, ans, ms, time) {
+  var speed = Math.max(0, 1 - ms / (time * 1000)), ok = 0, f = 0;
+  if (q.kind === 'num') {
+    var x = num_(ans);
+    if (isFinite(x)) { var err = Math.abs(x - q.val); if (err <= q.tol + 1e-9) { ok = 1; f = q.tol > 0 ? 1 - 0.5 * err / q.tol : 1; } }
+  } else if (Number(ans) === q.c) { ok = 1; f = 1; }
+  return { ok: ok, pts: ok ? Math.round(f * (500 + 500 * speed)) : 0 };
+}
+// Pytanie wysyłane do przeglądarki; reveal = z poprawną odpowiedzią i wyjaśnieniem.
+function pubQ_(q, c, reveal) {
+  var md = mediaFor_(q, c), o = { id: q.id, q: q.q, o: q.o, kind: q.kind, cat: q.cat, typ: q.typ, img: md.img, audio: md.audio };
+  if (reveal) { o.c = q.c; o.cap = q.cap || md.auto || ''; o.expl = q.expl; if (q.kind === 'num') { o.val = q.val; o.tol = q.tol; } }
+  return o;
 }
 
 function questionById_(id) {
@@ -208,14 +240,14 @@ function setState_(s) {
 function liveRows_(game) {
   var s = sh_(LIVE), last = s.getLastRow();
   if (last < 2) return [];
-  var rows = s.getRange(2, 1, last - 1, 8).getValues().filter(function (r) { return r[1] === game; });
+  var rows = s.getRange(2, 1, last - 1, 9).getValues().filter(function (r) { return r[1] === game; });
   // przy zmianie odpowiedzi liczy się ostatni wpis gracza dla danego pytania
   var seen = {}, out = [];
   rows.forEach(function (r) {
     if (Number(r[3]) < 0) { out.push(r); return; }
     var k = String(r[2]) + '|' + r[3];
     if (seen[k] === undefined) { seen[k] = out.length; out.push(r); }
-    else if (Number(out[seen[k]][4]) !== Number(r[4])) out[seen[k]] = r;   // ponowiony zapis tej samej odpowiedzi nie zmienia czasu
+    else if (String(out[seen[k]][4]) !== String(r[4])) out[seen[k]] = r;   // ponowiony zapis tej samej odpowiedzi nie zmienia czasu
   });
   return out;
 }
@@ -321,22 +353,37 @@ function freeRanking_(c) {
   }).sort(function (a, b) { return b.pts - a.pts; });
 }
 
+function akey_(st, name, i) { return 'a|' + st.game + '|' + name + '|' + i + ((st.round || 1) > 1 ? '|r' + st.round : ''); }
+// Rozkład odpowiedzi: liczby głosów (A–D, Prawda/Fałsz) albo lista wartości (Liczba).
+function dist_(q, rows) {
+  if (q.kind === 'num') return rows.map(function (r) { return Number(r[4]); }).filter(isFinite).slice(0, 400);
+  var d = q.o.map(function () { return 0; });
+  rows.forEach(function (r) { var k = Number(r[4]); if (k >= 0 && k < d.length) d[k]++; });
+  return d;
+}
+// Ostatnia odpowiedź każdego gracza w danym głosowaniu (1 albo 2) danego pytania.
+function roundRows_(game, i, rnd) {
+  var s = sh_(LIVE), last = s.getLastRow(), by = {};
+  if (last < 2) return [];
+  s.getRange(2, 1, last - 1, 9).getValues().forEach(function (r) {
+    if (r[1] === game && Number(r[3]) === i && (Number(r[8]) || 1) === rnd) by[String(r[2])] = r;
+  });
+  return Object.keys(by).map(function (k) { return by[k]; });
+}
+function round1Rows_(game, i) { return roundRows_(game, i, 1); }
 function stateOut_(p) {
   var c = cfg_(), st = getState_(), out = {
     mode: c.mode, phone: c.phone, time: c.time, change: c.change, title: c.title, sub: c.sub, now: Date.now(),
-    game: st.game, phase: st.phase, i: st.i, n: st.ids.length, startedAt: st.startedAt
+    game: st.game, phase: st.phase, i: st.i, n: st.ids.length, startedAt: st.startedAt, round: st.round || 1, peer: c.peer
   };
-  if (st.i >= 0 && st.i < st.ids.length && (st.phase === 'question' || st.phase === 'reveal' || st.phase === 'ranking')) {
-    var q = questionById_(st.ids[st.i]);
-    if (q) {
-      var md = mediaFor_(q, c);
-      out.q = { q: q.q, o: q.o, cat: q.cat, typ: q.typ, img: md.img, audio: md.audio };
-      if (st.phase !== 'question') { out.q.c = q.c; out.q.cap = q.cap || md.auto || ''; }
-    }
+  var q = null;
+  if (st.i >= 0 && st.i < st.ids.length && ['question', 'discuss', 'reveal', 'ranking'].indexOf(st.phase) >= 0) {
+    q = questionById_(st.ids[st.i]);
+    if (q) out.q = pubQ_(q, c, st.phase === 'reveal' || st.phase === 'ranking');
   }
   var rk = ranking_(st.game);
   if (p.name && st.phase === 'question') {   // potwierdzenie dla telefonu: odpowiedź zapisana na serwerze
-    var mine = CacheService.getScriptCache().get('a|' + st.game + '|' + String(p.name).slice(0, 20) + '|' + st.i);
+    var mine = CacheService.getScriptCache().get(akey_(st, String(p.name).slice(0, 20), st.i));
     if (mine !== null) out.mine = Number(mine);
   }
   if (p.name) {
@@ -347,16 +394,20 @@ function stateOut_(p) {
       var mine = liveRows_(st.game).filter(function (r) { return String(r[2]) === p.name && Number(r[3]) === st.i; })[0];
       out.last = mine ? { choice: Number(mine[4]), ok: Number(mine[5]), pts: Number(mine[6]) } : null;
     }
+    if (st.phase === 'discuss') {
+      var m1 = liveRows_(st.game).filter(function (r) { return String(r[2]) === p.name && Number(r[3]) === st.i; })[0];
+      out.first = m1 ? Number(m1[4]) : null;
+    }
   }
   if (p.full) {
     var rows = liveRows_(st.game);
     out.joined = rk.length;
-    out.answered = rows.filter(function (r) { return Number(r[3]) === st.i; }).length;
+    out.answered = (st.round || 1) > 1 ? roundRows_(st.game, st.i, st.round).length : rows.filter(function (r) { return Number(r[3]) === st.i; }).length;
     if (st.phase === 'lobby') out.names = rk.map(function (r) { return r.name; });
-    if (st.phase === 'reveal') {
-      var d = [0, 0, 0, 0];
-      rows.forEach(function (r) { if (Number(r[3]) === st.i && Number(r[4]) >= 0) d[Number(r[4])]++; });
-      out.dist = d;
+    if ((st.phase === 'reveal' || st.phase === 'discuss') && q) {
+      out.dist = dist_(q, rows.filter(function (r) { return Number(r[3]) === st.i; }));
+      if ((st.round || 1) === 2 || st.phase === 'discuss') out.dist1 = dist_(q, round1Rows_(st.game, st.i));
+      if (st.phase === 'discuss') delete out.dist;
     }
     if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'break' || st.phase === 'final') out.rank = rk.slice(0, 10);
     if (c.mode === 'free') out.freerank = freeRanking_(c).slice(0, 10);
@@ -470,7 +521,7 @@ function gpQuestions_(c, p) {
   if (!c.gp || !r) return { ok: 0, closed: 1 };
   var qs = roundQuestions_(r, c);
   return { ok: 1, round: r.n, end: r.end, time: c.time, change: c.change,
-    questions: qs.map(function (q) { var md = mediaFor_(q, c); return { id: q.id, q: q.q, o: q.o, cat: q.cat, img: md.img, audio: md.audio }; }) };
+    questions: qs.map(function (q) { return pubQ_(q, c, false); }) };
 }
 
 function gpSubmit_(c, p) {
@@ -486,11 +537,13 @@ function gpSubmit_(c, p) {
     if (rows.length >= c.gpLimit) return { ok: 0, limit: 1 };
     var qs = roundQuestions_(r, c), a = String(p.a || '').split(','), m = String(p.m || '').split(','), pts = 0, good = 0, det = [];
     qs.forEach(function (q, i) {
-      var ch = Number(a[i]); if (isNaN(ch)) ch = -1;
+      var raw = a[i] === undefined ? '' : String(a[i]), ch = raw === '' ? NaN : num_(raw);
+      if (!isFinite(ch)) ch = q.kind === 'num' ? null : -1;
       var ms = Math.min(c.time * 1000, Math.max(0, Number(m[i]) || 0));
-      var ok = ch === q.c ? 1 : 0;
-      if (ok) { good++; pts += 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))); }
-      det.push({ ch: ch, c: q.c, ok: ok, cap: q.cap || mediaFor_(q, c).auto || '' });
+      var sc = ch === null ? { ok: 0, pts: 0 } : score_(q, ch, ms, c.time);
+      if (sc.ok) good++;
+      pts += sc.pts;
+      det.push({ ch: ch, c: q.c, ok: sc.ok, kind: q.kind, val: q.val, tol: q.tol, expl: q.expl, cap: q.cap || mediaFor_(q, c).auto || '' });
     });
     var s = sh_(GPA);
     if (!s) { s = SpreadsheetApp.getActive().insertSheet(GPA); s.appendRow(['Czas', 'Runda', 'Klucz', 'Pseudonim', 'Próba', 'Punkty', 'Poprawne']); s.setFrozenRows(1); }
@@ -601,7 +654,7 @@ function doGet(e) {
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
   if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, flimit: c.freeLimit, fbest: c.freeBest }, c));
   if (action === 'questions') {
-    return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: pick_(c, freeSeed_(c)).map(function (q) { var md = mediaFor_(q, c); return { q: q.q, o: q.o, c: q.c, cat: q.cat, img: md.img, audio: md.audio, cap: q.cap || md.auto || '' }; }) }, c));
+    return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: pick_(c, freeSeed_(c)).map(function (q) { return pubQ_(q, c, true); }) }, c));
   }
   if (action === 'state') return json_(withMeta_(stateOut_(p), c));
   if (action === 'gp') return json_(withMeta_(gpPublic_(c, String(p.name || '').slice(0, 20)), c));
@@ -646,11 +699,12 @@ function doPost(e) {
     return json_({ ok: 1 });
   }
   if (type === 'answer') {
-    var i = Number(d.i), choice = Number(d.choice), now = Date.now();
-    if (!(choice >= 0 && choice <= 3)) return json_({ ok: 0 });
-    if (st.game !== (d.game || st.game) || st.phase !== 'question' || i !== st.i) return json_({ ok: 0, late: 1 });
+    var i = Number(d.i), choice = num_(d.choice), now = Date.now(), rnd = Number(d.round) || 1;
+    if (st.game !== (d.game || st.game) || st.phase !== 'question' || i !== st.i || rnd !== (st.round || 1)) return json_({ ok: 0, late: 1 });
     if (now - st.startedAt > (c.time * 1000) + 2000) return json_({ ok: 0, late: 1 });
-    var key = 'a|' + st.game + '|' + name + '|' + i;
+    var q = questionById_(st.ids[i]);
+    if (!q || !isFinite(choice) || (q.kind !== 'num' && !(choice >= 0 && choice < q.o.length && choice === Math.floor(choice)))) return json_({ ok: 0 });
+    var key = akey_(st, name, i);
     // Zapis pod blokadą: równoczesne appendRow bez blokady potrafią nadpisać sobie wiersze.
     // Ponowione wysłanie tej samej odpowiedzi jest potwierdzane (ok), a nie odrzucane.
     var lk = LockService.getScriptLock(); lk.waitLock(10000);
@@ -658,10 +712,9 @@ function doPost(e) {
       var prev = cache.get(key);
       if (prev !== null && Number(prev) === choice) return json_({ ok: 1, dup: 1, choice: choice });
       if (prev !== null && !c.change) return json_({ ok: 0, dup: 1, choice: Number(prev) });
-      var q = questionById_(st.ids[i]), ok = q && q.c === choice ? 1 : 0;
       var ms = Math.min(c.time * 1000, Math.max(Number(d.ms) || 0, now - st.startedAt - 2000, 0));
-      var pts = ok ? 500 + Math.round(500 * Math.max(0, 1 - ms / (c.time * 1000))) : 0;
-      sh_(LIVE).appendRow([new Date(), st.game, name, i, choice, ok, pts, ms]);
+      var sc = score_(q, choice, ms, c.time);
+      sh_(LIVE).appendRow([new Date(), st.game, name, i, choice, sc.ok, sc.pts, ms, st.round || 1]);
       SpreadsheetApp.flush();
       cache.put(key, String(choice), 21600);   // dopiero po udanym zapisie
       cache.remove('rk');
@@ -682,15 +735,19 @@ function host_(d, c) {
     } else if (cmd === 'start') {
       var ids = pick_(c, 'g' + now).map(function (q) { return q.id; });
       if (!ids.length) return { ok: 0, error: 'brak pytań' };
-      st.ids = ids; st.i = 0; st.phase = 'question'; st.startedAt = now;
+      st.ids = ids; st.i = 0; st.phase = 'question'; st.startedAt = now; st.round = 1;
     } else if (cmd === 'reveal') {
-      if (st.phase === 'question') st.phase = 'reveal';
+      if (st.phase === 'question' || st.phase === 'discuss') st.phase = 'reveal';
+    } else if (cmd === 'discuss') {           // peer instruction: rozkład głosów bez poprawnej odpowiedzi
+      if (st.phase === 'question' && (st.round || 1) === 1) st.phase = 'discuss';
+    } else if (cmd === 'revote') {            // drugie głosowanie po dyskusji
+      if (st.phase === 'discuss') { st.phase = 'question'; st.round = 2; st.startedAt = now; }
     } else if (cmd === 'break') {
       if (st.phase === 'reveal' || st.phase === 'ranking') st.phase = 'break';
     } else if (cmd === 'ranking') {
       if (st.phase === 'reveal') st.phase = 'ranking';
     } else if (cmd === 'next') {
-      if (st.i + 1 < st.ids.length) { st.i++; st.phase = 'question'; st.startedAt = now; }
+      if (st.i + 1 < st.ids.length) { st.i++; st.phase = 'question'; st.startedAt = now; st.round = 1; }
       else st.phase = 'final';
     } else if (cmd === 'final') {
       st.phase = 'final';
@@ -709,7 +766,7 @@ function host_(d, c) {
 // ======================= PANEL #admin =======================
 // Ustawienia (karta Sterowanie) i pytania (karta Pytania) edytowane z przeglądarki.
 // Dostęp: PIN prowadzącego; po 10 błędnych PIN-ach w ciągu 10 minut panel jest blokowany na 10 minut.
-var ADM_FIELDS = 11;   // Pytania: Kategoria, Pytanie, A, B, C, D, Poprawna, Aktywne, Typ, Źródło, Podpis
+var ADM_FIELDS = 15;   // Pytania: kolumny A–O (zob. QCOLS)
 
 function admin_(d, c) {
   var cache = CacheService.getScriptCache(), fails = Number(cache.get('adm_fail') || 0);
@@ -776,7 +833,12 @@ function admQuestions_() {
   return out;
 }
 function admGameActive_() { var st = getState_(); return ['question', 'reveal', 'ranking', 'break'].indexOf(st.phase) >= 0; }
+function admHeaders_() {
+  var s = sh_('Pytania'), h = s.getRange(1, 12, 1, QHEAD.length).getValues()[0];
+  if (h.some(function (x) { return x === ''; })) s.getRange(1, 12, 1, QHEAD.length).setValues([QHEAD]);
+}
 function admLoad_(c) {
+  try { admHeaders_(); } catch (e) {}
   var st = getState_(), media = [];
   try { media = Object.keys(folderMap_(c)).filter(function (n) { return /\.[a-z0-9]{2,5}$/.test(n); }).sort(); } catch (e) {}
   return { ok: 1, settings: admSettings_(), categories: admCategories_(), questions: admQuestions_(), media: media,
@@ -812,8 +874,20 @@ function admQSave_(d) {
   while (v.length < ADM_FIELDS) v.push('');
   if (!v[0]) return { ok: 0, error: 'Podaj kategorię.' };
   if (!v[1]) return { ok: 0, error: 'Podaj treść pytania.' };
-  for (var k = 2; k <= 5; k++) if (!v[k]) return { ok: 0, error: 'Uzupełnij odpowiedź ' + 'ABCD'[k - 2] + '.' };
-  v[6] = v[6].toUpperCase(); if ('ABCD'.indexOf(v[6]) < 0 || v[6].length !== 1) return { ok: 0, error: 'Wskaż poprawną odpowiedź.' };
+  var kind = kind_(v[11]);
+  v[11] = kind === 'tf' ? 'Prawda/Fałsz' : (kind === 'num' ? 'Liczba' : 'A–D');
+  if (kind === 'num') {
+    if (!isFinite(num_(v[13]))) return { ok: 0, error: 'Podaj poprawną wartość liczbową.' };
+    if (v[14] !== '' && !(num_(v[14]) >= 0)) return { ok: 0, error: 'Tolerancja musi być liczbą nieujemną.' };
+    v[13] = String(num_(v[13])); v[14] = v[14] === '' ? '' : String(num_(v[14]));
+    v[2] = v[3] = v[4] = v[5] = v[6] = '';
+  } else {
+    v[13] = v[14] = '';
+    if (kind === 'tf') { v[2] = v[2] || 'Prawda'; v[3] = v[3] || 'Fałsz'; v[4] = v[5] = ''; }
+    else for (var k = 2; k <= 5; k++) if (!v[k]) return { ok: 0, error: 'Uzupełnij odpowiedź ' + 'ABCD'[k - 2] + '.' };
+    v[6] = v[6].toUpperCase();
+    if ((kind === 'tf' ? 'AB' : 'ABCD').indexOf(v[6]) < 0 || v[6].length !== 1) return { ok: 0, error: 'Wskaż poprawną odpowiedź.' };
+  }
   v[7] = v[7].toUpperCase() === 'NIE' ? 'NIE' : 'TAK';
   if (['Tekst', 'Zdjęcie', 'Muzyka'].indexOf(v[8]) < 0) v[8] = 'Tekst';
   if (v[8] !== 'Tekst' && !v[9]) return { ok: 0, error: 'Pytanie typu ' + v[8] + ' wymaga źródła (plik, adres albo „wykonawca – tytuł”).' };
