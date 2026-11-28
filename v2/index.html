@@ -95,6 +95,8 @@ input.name{width:100%;padding:16px;border-radius:12px;border:2px solid var(--bor
 .hostbar .btn{font-size:17px;padding:12px 18px}
 .qimg{display:block;max-width:100%;max-height:30vh;margin:16px auto;border-radius:14px;object-fit:contain}
 .corner{position:fixed;right:20px;top:20px;background:#fff;padding:8px;border-radius:10px}
+.rteam,.rstk{position:relative;margin-left:12px;font-size:.6em;opacity:.85}.rstk{color:var(--accent);opacity:1}
+.teamcol{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:20px}.teamcol h3{font-size:22px;margin:0 0 8px;color:var(--accent)}
 .katex{font-size:1.05em}.tile .tx{display:block;white-space:normal}.tile .katex{color:inherit;font-size:1.15em}.big .katex{font-size:1em}
 /* Panel prowadzącego (#admin) */
 .admin .wrap{max-width:1180px;padding-bottom:110px}
@@ -226,6 +228,7 @@ function fmtN(x){return (+x).toLocaleString("pl-PL",{maximumFractionDigits:6})}
 function parseN(v){v=String(v).replace(/\s/g,"").replace(",",".");return v===""||!/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(v)?NaN:Number(v)}
 /* punktacja jak w apps_script.gs (score_) */
 function scoreQ(q,a,ms,T){var sp=Math.max(0,1-ms/(T*1000)),ok=0,f=0;if(q.kind==="num"){var x=+a;if(isFinite(x)&&a!==null&&a!==""){var e=Math.abs(x-q.val);if(e<=(q.tol||0)+1e-9){ok=1;f=q.tol>0?1-0.5*e/q.tol:1}}}else if(a===q.c){ok=1;f=1}return{ok:ok,pts:ok?Math.round(f*(500+500*sp)):0}}
+function bonus(n){return n>=2?Math.min(n-1,5)*100:0}
 function corrText(q){return q.kind==="num"?fmtN(q.val)+(q.tol?" (± "+fmtN(q.tol)+")":""):(q.kind==="tf"?"":LET[q.c]+". ")+q.o[q.c]}
 function ansText(q,a){return q.kind==="num"?fmtN(a):(q.kind==="tf"?"":LET[a]+". ")+q.o[a]}
 function explHtml(q){return q&&q.expl?'<div class="msg expl"><b>Wyjaśnienie.</b> '+esc(q.expl)+'</div>':""}
@@ -242,14 +245,16 @@ function stripHtml(vals,q,showC,label){if(!vals||!vals.length)return'<div class=
 function distHtml(q,st,rev){if(q.kind==="num"){if(!rev)return stripHtml(st.dist1,q,false,"Pierwsze głosowanie");return(st.dist1&&st.round>1?stripHtml(st.dist1,q,true,"Pierwsze głosowanie"):"")+stripHtml(st.dist,q,true,st.dist1&&st.round>1?"Po dyskusji":"")}
  var d=rev?st.dist||[]:st.dist1||[],cnt=q.o.map(function(x,k){return rev&&st.dist1&&st.round>1?(st.dist1[k]||0)+" → "+(d[k]||0):(d[k]||0)}),dim=null;if(rev){dim=q.o.map(function(){return 1});dim[q.c]=0}return tilesHtml(q,{dim:dim,cnt:cnt})}
 function tilesHtml(q,o){var h='<div class="tiles">';for(var k=0;k<nOpt(q);k++){var c="tile "+clsOf(q,k)+(o.dim&&o.dim[k]?" dim":"")+(o.pick===k?" pick":"");var inner='<span class="sym">'+symOf(q,k)+'</span><span class="tx">'+esc(q.o[k])+'</span>'+(o.cnt?'<span class="cnt">'+o.cnt[k]+'</span>':"");h+=o.btn?'<button class="'+c+'" data-i="'+k+'"'+(o.off?" disabled":"")+'>'+inner+'</button>':'<div class="'+c+'">'+inner+'</div>'}return h+"</div>"}
-function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b></span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
+function rankHtml(rows,n,max){var h="";rows.slice(0,n).forEach(function(r,k){var w=max?Math.round(100*r.pts/max):0;h+='<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+w+'%"></i><b>'+esc(r.name)+'</b>'+(r.team?'<small class="rteam">'+esc(r.team)+'</small>':'')+(r.streak>=2?'<small class="rstk" title="Seria poprawnych odpowiedzi">🔥 '+r.streak+'</small>':'')+'</span><span class="pt">'+r.pts+' pkt</span></div>'});return h}
+function teamHtml(tr,title){if(!tr||!tr.length)return"";var mx=tr[0].pts||1;return'<h2 style="margin-top:30px;font-size:32px">'+(title||"Drużyny")+'</h2>'+tr.map(function(t,k){return'<div class="rk"><span>'+(k+1)+'.</span><span class="nm"><i style="width:'+Math.round(100*t.pts/mx)+'%"></i><b>'+esc(t.team)+'</b><small class="rteam">'+t.n+' os.</small></span><span class="pt">'+t.pts+' pkt</span></div>'}).join("")}
 
 /* ---------- Telefon: tryb dowolny ---------- */
-function freePlayer(Q,TIME,openStart,change,FL,FB){
+function freePlayer(Q,TIME,openStart,change,FL,FB,STK){
+ var fst=0,lastB=0;
  var att="",tries=0,i=0,pts=0,good=0,left=TIME,tm=null,t0=0,name=ls("qn"),open=openStart,wt=null,sel=-1,selT=0;
  function poll(cb){get("action=config").then(function(d){open=Number(d.open)||0;cb&&cb()}).catch(function(){cb&&cb()})}
  function intro(){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Dołącz do gry!</h1><p class="sub">'+(open<Q.length?'W tej chwili dostępnych jest '+open+' z '+Q.length+' pytań, kolejne odblokuje prowadzący. ':Q.length+' '+plPyt(Q.length)+'. ')+TIME+' sekund na każde. Im szybciej odpowiesz poprawnie, tym więcej punktów. '+(FL<999?'Liczba podejść: '+FL+'. '+(FB?'Liczy się najlepszy wynik. ':'Liczy się pierwsza próba. '):(FB?'':'Liczy się pierwsza próba. '))+'Bez logowania. Wynik trafi na ekran główny.</p><input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Start</button>');document.getElementById("go").onclick=start}
- function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}if(r.limit&&r.tries>=r.limit){b.disabled=false;limitScreen(v);return}tries=(r.tries||0)+1;att=Date.now().toString(36)+Math.random().toString(36).slice(2,6);name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
+ function start(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("free",v)).then(function(r){if(!r.ok){b.disabled=false;intro();document.getElementById("nm").value=v;taken();return}if(r.limit&&r.tries>=r.limit){b.disabled=false;limitScreen(v);return}tries=(r.tries||0)+1;fst=0;att=Date.now().toString(36)+Math.random().toString(36).slice(2,6);name=v;ls("qn",name);i=0;pts=0;good=0;poll(next)})}
  function limitScreen(v){show('<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Limit podejść wykorzystany</h1><div class="msg">Pseudonim '+esc(v)+' rozegrał już '+FL+' '+(FL===1?'podejście':'podejścia')+'. '+(FB?'W rankingu liczy się najlepszy wynik.':'W rankingu liczy się pierwsza próba.')+'</div>')}
  function taken(){var m=document.getElementById("nm");m.insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>')}
  function next(){clearInterval(wt);if(i>=Q.length){fin();return}if(i>=open)wait();else ask()}
@@ -260,21 +265,22 @@ function freePlayer(Q,TIME,openStart,change,FL,FB){
   Array.prototype.forEach.call(tl,function(b){b.onclick=function(){var k=+b.getAttribute("data-i");if(!change){pick(k);return}sel=k;selT=Date.now()-t0;Array.prototype.forEach.call(tl,function(x){x.classList.toggle("pick",+x.getAttribute("data-i")===k)});okb.disabled=false}});
   if(okb)okb.onclick=function(){pick(sel,selT/1000)};bindNum(function(v){pick(v)});
   clearInterval(tm);tm=setInterval(function(){left=Math.max(0,TIME-Math.floor((Date.now()-t0)/1000));var e=document.getElementById("tm");if(e)e.textContent=left+" s";if(left<=0){if(sel>=0)pick(sel,selT/1000);else pick(q.kind==="num"?null:-1)}},250)}
- function pick(k,elp){clearInterval(tm);stopAudio();var q=Q[i],el=elp!==undefined?elp:(Date.now()-t0)/1000,none=k===null||k===-1,sc=none?{ok:0,pts:0}:scoreQ(q,k,el*1000,TIME),ok=sc.ok,gain=sc.pts;if(ok)good++;pts+=gain;
+ function pick(k,elp){clearInterval(tm);stopAudio();var q=Q[i],el=elp!==undefined?elp:(Date.now()-t0)/1000,none=k===null||k===-1,sc=none?{ok:0,pts:0}:scoreQ(q,k,el*1000,TIME),ok=sc.ok,gain=sc.pts;lastB=0;if(ok){good++;fst++;if(STK){lastB=bonus(fst);gain+=lastB}}else fst=0;pts+=gain;
   var body;if(q.kind==="num")body=numHtml(q,{off:1,val:none?"":k})+'<div class="msg" style="margin-top:8px">Poprawna odpowiedź: <b>'+esc(corrText(q))+'</b></div>';else{var dim=q.o.map(function(){return 1});dim[q.c]=0;body=tilesHtml(q,{dim:dim,pick:k})}
   show('<p class="eyebrow">Pytanie '+(i+1)+' z '+Q.length+'</p><h1 class="big" style="font-size:clamp(19px,4vw,30px)">'+esc(q.q)+'</h1>'+mediaHtml(q)+body);
-  app.querySelector(".wrap").insertAdjacentHTML("beforeend",'<div class="msg">'+(none?'<span class="bad">Czas minął.</span>':ok?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>')+' +'+gain+' pkt, razem '+pts+' pkt.'+(q.cap?'<br>'+esc(q.cap):'')+'</div>'+explHtml(q)+'<p><button class="btn" id="nx" style="margin-top:20px">'+(i+1>=Q.length?"Zobacz wynik":"Dalej")+'</button></p>');
+  app.querySelector(".wrap").insertAdjacentHTML("beforeend",'<div class="msg">'+(none?'<span class="bad">Czas minął.</span>':ok?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>')+' +'+gain+' pkt'+(lastB?' (w tym bonus za serię +'+lastB+')':'')+', razem '+pts+' pkt.'+(q.cap?'<br>'+esc(q.cap):'')+'</div>'+explHtml(q)+'<p><button class="btn" id="nx" style="margin-top:20px">'+(i+1>=Q.length?"Zobacz wynik":"Dalej")+'</button></p>');
   document.getElementById("nx").onclick=function(){i++;next()}}
  function fin(){send();show('<p class="eyebrow">Koniec quizu</p><h1 class="big">'+esc(name)+', twój wynik: '+pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+good+' z '+Q.length+'. '+(FL<999?'<br>Wykorzystane podejścia: '+tries+' z '+FL+'.':'')+(!FB?'<br>W rankingu liczy się pierwsza próba.':'')+' Dziękujemy za grę!</div>'+(tries<FL?'<p><button class="btn ghost" id="again" style="margin-top:20px">Zagraj jeszcze raz</button></p>':''));var ag=document.getElementById("again");if(ag)ag.onclick=intro}
  intro()}
 
 /* ---------- Telefon: tryb na żywo ---------- */
-function livePlayer(){
+function livePlayer(LC){
+ var TEAMS=(LC&&LC.teams)||null;
  var name=ls("qn"),joined=false,st=null,off=0,ans={},conf={},pend={},fail={},lastTap=0,lastSig="",newGame=false,lastMe=null;
  function key(){return st.game+"|"+st.i+"|"+(st.round||1)}
  function load(){try{ans=JSON.parse(ls("ans")||"{}")}catch(e){ans={}}}
  function saveAns(){ls("ans",JSON.stringify(ans))}
- function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">'+(newGame?'Gra zakończona':'Podaj pseudonim')+'</h1>'+(newGame?'<div class="msg" style="margin:0 0 10px">Prowadzący zakończył poprzednią grę.'+(lastMe?' Twój wynik: <b>'+lastMe.pts+' pkt</b>, miejsce '+lastMe.place+' z '+lastMe.of+'.':'')+' Dziękujemy za udział!<br>Jeśli chcesz zagrać w kolejnej grze, dołącz ponownie.</div>':'')+'<input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+idField()+'<button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var b=document.getElementById("go");b.disabled=true;(idSave(),claim("live",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;ls("jg",st&&st.game?st.game:"?");post({type:"join",name:name,tok:tok()});lastSig="";draw()})}}
+ function nameScreen(){show('<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">'+(newGame?'Gra zakończona':'Podaj pseudonim')+'</h1>'+(newGame?'<div class="msg" style="margin:0 0 10px">Prowadzący zakończył poprzednią grę.'+(lastMe?' Twój wynik: <b>'+lastMe.pts+' pkt</b>, miejsce '+lastMe.place+' z '+lastMe.of+'.':'')+' Dziękujemy za udział!<br>Jeśli chcesz zagrać w kolejnej grze, dołącz ponownie.</div>':'')+'<input class="name" id="nm" maxlength="20" placeholder="Twój pseudonim" value="'+esc(name)+'">'+(TEAMS?'<select class="name" id="teamSel" style="margin-top:0"><option value="">Wybierz drużynę…</option>'+TEAMS.map(function(t){return'<option'+(ls("team")===t?" selected":"")+'>'+esc(t)+'</option>'}).join("")+'</select>':'')+idField()+'<button class="btn" id="go">Dołącz</button>');document.getElementById("go").onclick=function(){var v=document.getElementById("nm").value.trim().slice(0,20);if(!v){document.getElementById("nm").focus();return}var ts=document.getElementById("teamSel");if(ts&&!ts.value){ts.focus();ts.style.borderColor="var(--bad)";return}if(ts)ls("team",ts.value);var b=document.getElementById("go");b.disabled=true;(idSave(),claim("live",v)).then(function(r){if(!r.ok){b.disabled=false;document.getElementById("nm").insertAdjacentHTML("afterend",'<div class="msg" style="color:#c0392b">Ten pseudonim jest już zajęty. Wybierz inny.</div>');return}name=v;ls("qn",name);ls("joined",name);joined=true;ls("jg",st&&st.game?st.game:"?");post({type:"join",name:name,tok:tok(),team:TEAMS?ls("team"):""});lastSig="";draw()})}}
  function remaining(){return Math.max(0,st.time-Math.floor((Date.now()+off-st.startedAt)/1000))}
  function draw(){
   if(!joined){if(!document.getElementById("nm"))nameScreen();return}
@@ -293,7 +299,7 @@ function livePlayer(){
    else if(ast==="send")h+='<div class="msg">Wysyłanie odpowiedzi…</div>'}
   else if(st.phase==="discuss")h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · dyskusja</p><h1 class="big">Porozmawiaj z sąsiadem</h1><div class="msg">'+(q?esc(q.q)+'<br><br>':'')+(st.first!==null&&st.first!==undefined&&q?'Twoja odpowiedź w pierwszym głosowaniu: <b>'+esc(ansText(q,st.first))+'</b>. ':'')+'Za chwilę ponowne głosowanie: możesz zostać przy swojej odpowiedzi albo ją zmienić.</div>';
   else if(st.phase==="reveal"){var l=st.last,good=l&&l.ok;
-   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">'+(ans[K]!==undefined?'Odpowiedź nie dotarła do serwera.':'Brak odpowiedzi.')+'</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+esc(corrText(q))+'</b>'+(l&&q.kind==="num"?'<br>Twoja odpowiedź: '+fmtN(l.choice):'')+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt.':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'+explHtml(q)}
+   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+'</p><h1 class="big" style="font-size:clamp(24px,5vw,40px)">'+(l?(good?'<span class="ok">Dobrze!</span>':'<span class="bad">Niestety, źle.</span>'):'<span class="bad">'+(ans[K]!==undefined?'Odpowiedź nie dotarła do serwera.':'Brak odpowiedzi.')+'</span>')+'</h1><div class="msg">Poprawna odpowiedź: <b>'+esc(corrText(q))+'</b>'+(l&&q.kind==="num"?'<br>Twoja odpowiedź: '+fmtN(l.choice):'')+(q.cap?'<br>'+esc(q.cap):'')+(l?'<br>Za to pytanie: +'+l.pts+' pkt'+(l.bonus?' oraz bonus za serię <b>+'+l.bonus+'</b>':'')+'.':'')+(st.me&&st.me.streak>=2?'<br>🔥 Seria poprawnych odpowiedzi: <b>'+st.me.streak+'</b>':'')+(st.me&&st.me.tplace?'<br>Drużyna '+esc(st.me.team)+': miejsce '+st.me.tplace.place+' z '+st.me.tplace.of+' ('+st.me.tplace.pts+' pkt)':'')+(st.me?'<br>Razem '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'.':'')+'</div>'+explHtml(q)}
   else if(st.phase==="break")h='<p class="eyebrow">Przerwa</p><h1 class="big">'+esc(BRK)+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt, miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Nie zamykaj tej strony.</div>';
   else if(st.phase==="ranking")h='<p class="eyebrow">Ranking</p><h1 class="big">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of:'Ranking')+'</h1><div class="msg">'+(st.me?'Masz '+st.me.pts+' pkt. ':'')+'Sprawdź ranking na ekranie głównym.</div>';
   else h='<p class="eyebrow">Koniec quizu</p><h1 class="big">'+(st.me?'Twój wynik: '+st.me.pts+' pkt':'Koniec quizu')+'</h1><div class="msg">'+(st.me?'Miejsce '+st.me.place+' z '+st.me.of+'. ':'')+'Dziękujemy za grę!</div>';
@@ -316,10 +322,10 @@ function livePlayer(){
   draw()}).catch(function(){})}
  setInterval(function(){var e=document.getElementById("tm");if(e&&st&&st.phase==="question"){e.textContent=remaining()+" s";if(remaining()<=0){lastSig="";draw()}}},300);
  load();
- if(name&&ls("joined")===name)joined=true;
+ if(name&&ls("joined")===name&&(!TEAMS||TEAMS.indexOf(ls("team"))>=0))joined=true;
  draw();tick();setInterval(tick,2000);
  if(joined)get("action=state").then(function(d){if(!d.game||ls("jg")!==d.game){joined=false;ls("joined","- ");newGame=!!ls("jg");lastSig="";draw();return}
-  claim("live",name).then(function(r){if(r.ok)post({type:"join",name:name,tok:tok()});else{joined=false;ls("joined","- ");lastSig="";draw()}})}).catch(function(){})}
+  claim("live",name).then(function(r){if(r.ok)post({type:"join",name:name,tok:tok(),team:TEAMS?ls("team"):""});else{joined=false;ls("joined","- ");lastSig="";draw()}})}).catch(function(){})}
 
 /* ---------- Ekran na telewizor ---------- */
 function tvPage(){
@@ -340,18 +346,18 @@ function tvPage(){
   b+='<button class="btn ghost" data-c="reset">Nowa gra (reset)</button>'+adm+'</div>';return b}
  function draw(){
   if(!st){show('<p class="sub">Łączenie…</p>');return}
-  var sig=JSON.stringify([st.mode,st.phase,st.i,st.game,st.round,st.joined,st.answered,st.dist,st.dist1,st.rank,st.names,st.freerank]);if(sig===lastSig)return;lastSig=sig;
+  var sig=JSON.stringify([st.mode,st.phase,st.i,st.game,st.round,st.joined,st.answered,st.dist,st.dist1,st.rank,st.names,st.nteam,st.trank,st.freerank]);if(sig===lastSig)return;lastSig=sig;
   var h="",q=st.q,p=st.phase;
   if(st.mode!=="live"){
    var fr=st.freerank||[],mx=fr.length?fr[0].pts:0;
    h='<p class="eyebrow">'+QT+QSUB()+'</p><h1 class="big">Dołącz do gry!</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu. Bez logowania, w dowolnym momencie.</p>'+(fr.length?'<h2 style="margin-top:28px;font-size:36px">Najlepsze wyniki</h2>'+rankHtml(fr,10,mx):'')+'</div></div>'}
-  else if(p==="lobby")h='<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Dołącz do gry!</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu, wpisz pseudonim i czekaj na pierwsze pytanie.</p><p class="sub">Dołączyło: <b>'+(st.joined||0)+'</b></p><div class="row" style="margin-top:20px">'+(st.names||[]).map(function(n){return'<span class="chip">'+esc(n)+'</span>'}).join("")+'</div></div></div>';
+  else if(p==="lobby")h='<p class="eyebrow">'+QT+' · na żywo</p><h1 class="big">Dołącz do gry!</h1><div class="lobby"><div><div class="qr" id="qr"></div></div><div><p class="sub">Zeskanuj kod aparatem telefonu lub tabletu, wpisz pseudonim i czekaj na pierwsze pytanie.</p><p class="sub">Dołączyło: <b>'+(st.joined||0)+'</b></p><div class="row" style="margin-top:20px">'+(st.teams&&st.nteam?'</div><div class="teamcol">'+st.teams.concat([""]).map(function(t){var m=(st.names||[]).filter(function(n,k){return(st.nteam[k]||"")===t});if(!t&&!m.length)return"";return'<div><h3>'+(t?esc(t):"Bez drużyny")+' ('+m.length+')</h3>'+m.map(function(n){return'<span class="chip" style="display:inline-block;margin:0 6px 6px 0">'+esc(n)+'</span>'}).join("")+'</div>'}).join(""):(st.names||[]).map(function(n){return'<span class="chip">'+esc(n)+'</span>'}).join(""))+'</div></div></div>';
   else if(p==="question")h='<div class="row" style="justify-content:space-between"><p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+(q&&q.cat?' · '+esc(q.cat):'')+(st.round>1?' · ponowne głosowanie':'')+'</p><div class="timer" id="tm">'+remaining()+'</div></div><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+((q.typ==="Muzyka"&&!q.audio)||(q.typ==="Zdjęcie"&&!q.img)?'<div class="msg" style="color:#FF9A8A">Brak pliku multimedialnego dla tego pytania. W arkuszu użyj menu Quiz → Sprawdź pytania ze zdjęciem i muzyką.</div>':"")+(q.audio?'<p class="sub">🎵 Fragment muzyczny (jeśli nie słychać, kliknij „Odtwórz ponownie")</p>':"")+(q.kind==="num"?'<div class="msg">Odpowiedź liczbową wpisuje się na telefonie.</div>':tilesHtml(q,{}))+'<p class="sub">Odpowiedziało: '+(st.answered||0)+' z '+(st.joined||0)+'</p>';
   else if(p==="discuss")h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · dyskusja</p><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+distHtml(q,st,false)+'<p class="sub">Porozmawiajcie z sąsiadem i spróbujcie się przekonać. Za chwilę ponowne głosowanie.</p>';
   else if(p==="reveal"){var r3=(st.rank||[]).slice(0,3);
-   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · poprawna odpowiedź: '+esc(q.kind==="num"?corrText(q):q.kind==="tf"?q.o[q.c]:LET[q.c])+'</p><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+distHtml(q,st,true)+(q.expl?'<p class="sub expl">'+esc(q.expl)+'</p>':'')+(q.cap?'<p class="sub">'+esc(q.cap)+'</p>':'')+'<h2 style="margin-top:30px;font-size:36px">Najlepsza trójka</h2>'+rankHtml(r3,3,r3.length?r3[0].pts:0)}
-  else if(p==="break"){var rb=st.rank||[];h='<p class="eyebrow">Przerwa</p><h1 class="big" style="font-size:clamp(40px,7vw,96px)">'+esc(BRK)+'</h1><h2 style="margin-top:30px;font-size:32px">Najlepsi gracze</h2>'+rankHtml(rb,5,rb.length?rb[0].pts:0)}
-  else{var rk=st.rank||[];h='<p class="eyebrow">'+(p==="final"?"Koniec quizu":"Ranking po pytaniu "+(st.i+1))+'</p><h1 class="big">'+(p==="final"?"Wyniki końcowe":"Najlepsi gracze")+'</h1>'+rankHtml(rk,10,rk.length?rk[0].pts:0)}
+   h='<p class="eyebrow">Pytanie '+(st.i+1)+' z '+st.n+' · poprawna odpowiedź: '+esc(q.kind==="num"?corrText(q):q.kind==="tf"?q.o[q.c]:LET[q.c])+'</p><h1 class="big">'+esc(q.q)+'</h1>'+mediaHtml(q)+distHtml(q,st,true)+(q.expl?'<p class="sub expl">'+esc(q.expl)+'</p>':'')+(q.cap?'<p class="sub">'+esc(q.cap)+'</p>':'')+'<h2 style="margin-top:30px;font-size:36px">Najlepsza trójka</h2>'+rankHtml(r3,3,r3.length?r3[0].pts:0)+(st.trank?'<p class="sub">Drużyny: '+st.trank.map(function(t,k){return(k+1)+'. '+esc(t.team)+' '+t.pts+' pkt'}).join(" · ")+'</p>':'')}
+  else if(p==="break"){var rb=st.rank||[];h='<p class="eyebrow">Przerwa</p><h1 class="big" style="font-size:clamp(40px,7vw,96px)">'+esc(BRK)+'</h1>'+teamHtml(st.trank)+'<h2 style="margin-top:30px;font-size:32px">Najlepsi gracze</h2>'+rankHtml(rb,5,rb.length?rb[0].pts:0)}
+  else{var rk=st.rank||[];h='<p class="eyebrow">'+(p==="final"?"Koniec quizu":"Ranking po pytaniu "+(st.i+1))+'</p><h1 class="big">'+(p==="final"?"Wyniki końcowe":st.trank?"Ranking":"Najlepsi gracze")+'</h1>'+teamHtml(st.trank,p==="final"?"Klasyfikacja drużyn":"Drużyny")+(st.trank?'<h2 style="margin-top:30px;font-size:32px">Gracze</h2>':'')+rankHtml(rk,st.trank?8:10,rk.length?rk[0].pts:0)}
   show(h+'<div style="height:90px"></div>');
   if(st.mode==="live"){if(p==="question"&&q&&q.audio){var kk=st.game+"|"+st.i;if(tvKey!==kk){tvKey=kk;stopAudio();AU=new Audio(q.audio);AU.play().catch(function(){})}}else stopAudio()}
   var qe=document.getElementById("qr");if(qe)qr(qe,380);
@@ -459,7 +465,7 @@ function gpPage(){
  function send(){show('<p class="sub">Zapisuję wynik…</p>');
   get("action=gpsubmit&round="+round+"&name="+encodeURIComponent(name)+"&tok="+tok()+"&a="+ch.map(function(x){return x===null||x===undefined?"":x}).join(",")+"&m="+ms.join(",")).then(function(r){
    if(!r.ok){var t=r.taken?"Ten pseudonim jest zajęty przez inne urządzenie.":r.limit?"Wykorzystano wszystkie próby w tej rundzie.":r.closed?"Ta runda została już zamknięta, wynik nie został zapisany.":"Nie udało się zapisać wyniku.";show('<p class="eyebrow">Grand Prix</p><h1 class="big">Wynik niezapisany</h1><div class="msg">'+t+'</div><p><button class="btn ghost" id="hm" style="margin-top:20px">Wróć</button></p>');document.getElementById("hm").onclick=home;return}
-   var det=r.details.map(function(x,j){var q=Q[j];return'<div class="rowb" style="margin-top:8px;font-size:17px"><span>'+(j+1)+'. '+esc(q.q)+'<br><small>'+(x.ok?'<span class="ok">dobrze</span>':'<span class="bad">źle</span>')+' · poprawna odpowiedź: '+esc(corrText({kind:x.kind,val:x.val,tol:x.tol,c:x.c,o:q.o}))+(x.kind==="num"&&x.ch!==null?' · twoja: '+fmtN(x.ch):'')+(x.cap?' · '+esc(x.cap):'')+(x.expl?'<br>'+esc(x.expl):'')+'</small></span></div>'}).join("");
+   var det=r.details.map(function(x,j){var q=Q[j];return'<div class="rowb" style="margin-top:8px;font-size:17px"><span>'+(j+1)+'. '+esc(q.q)+'<br><small>'+(x.ok?'<span class="ok">dobrze</span>':'<span class="bad">źle</span>')+' · poprawna odpowiedź: '+esc(corrText({kind:x.kind,val:x.val,tol:x.tol,c:x.c,o:q.o}))+(x.kind==="num"&&x.ch!==null?' · twoja: '+fmtN(x.ch):'')+(x.bonus?' · bonus za serię +'+x.bonus:'')+(x.cap?' · '+esc(x.cap):'')+(x.expl?'<br>'+esc(x.expl):'')+'</small></span></div>'}).join("");
    show('<p class="eyebrow">Runda '+round+' · zakończona</p><h1 class="big">'+esc(name)+': '+r.pts+' pkt</h1><div class="msg">Poprawnych odpowiedzi: '+r.good+' z '+r.n+'. Próba nr '+r.attempt+'.<br>Klasyfikacja generalna: miejsce <b>'+r.place+'</b> z '+r.of+', razem <b>'+r.total+'</b> pkt.</div>'+det+'<p><button class="btn" id="hm" style="margin-top:20px">'+(r.left>0?'Zagraj jeszcze raz / klasyfikacja':'Klasyfikacja')+'</button></p>');document.getElementById("hm").onclick=home}).catch(function(){show('<p class="eyebrow">Grand Prix</p><h1 class="big">Brak połączenia</h1><div class="msg">Wynik nie został jeszcze zapisany.</div><p><button class="btn" id="rt" style="margin-top:20px">Spróbuj ponownie</button></p>');document.getElementById("rt").onclick=send})}
  home()}
 
@@ -633,11 +639,11 @@ function boot(){
  show('<p class="sub">Ładowanie quizu…</p>');
  get("action=config").then(function(c){setT(c);
   if(c.mode==="poll"){setP(c);pollPlayer();return}
-  if(c.mode==="live"){livePlayer();return}
+  if(c.mode==="live"){livePlayer(c);return}
   if(c.win&&c.win.status!=="open"){closedScreen(c.win);return}
   get("action=questions").then(function(d){
    if(!d.questions||!d.questions.length){show('<p class="eyebrow">'+QT+'</p><h1 class="big">Brak pytań</h1>');return}
-   freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change,Number(c.flimit)||999,c.fbest!==false)}).catch(function(){err(boot)})
+   freePlayer(d.questions,d.time||20,Number(d.open)||0,!!d.change,Number(c.flimit)||999,c.fbest!==false,!!c.streak)}).catch(function(){err(boot)})
  }).catch(function(){err(boot)})}
 boot();
 </script>

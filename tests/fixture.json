@@ -61,6 +61,21 @@
      "Nie"
     ],
     [
+     "Bonus za serię poprawnych odpowiedzi",
+     "Nie"
+    ],
+    [
+     "▸  DRUŻYNY (gra na żywo)"
+    ],
+    [
+     "Drużyny (nazwy po przecinku)",
+     ""
+    ],
+    [
+     "Wynik drużyny",
+     "Średnia"
+    ],
+    [
      "Telefon w trybie na żywo pokazuje",
      "Pytanie i odpowiedzi"
     ],
@@ -236,21 +251,21 @@
      ],
      "strict": true
     },
-    "16:2": {
+    "20:2": {
      "list": [
       "Tylko przyciski A–D",
       "Pytanie i odpowiedzi"
      ],
      "strict": true
     },
-    "18:2": {
+    "22:2": {
      "list": [
       "Tak",
       "Nie"
      ],
      "strict": true
     },
-    "21:2": {
+    "25:2": {
      "list": [
       "Morska",
       "Jasna",
@@ -262,14 +277,14 @@
      ],
      "strict": true
     },
-    "24:2": {
+    "28:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "28:2": {
+    "32:2": {
      "list": [
       "Wszystkie",
       "0",
@@ -278,7 +293,7 @@
      ],
      "strict": false
     },
-    "31:2": {
+    "35:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -288,25 +303,25 @@
      ],
      "strict": true
     },
-    "32:2": {
+    "36:2": {
      "list": [
       "Najlepszy wynik",
       "Tylko pierwsza próba"
      ],
      "strict": true
     },
-    "34:2": {
+    "38:2": {
      "list": [
       "Włączone",
       "Wyłączone"
      ],
      "strict": true
     },
-    "37:2": {
+    "41:2": {
      "range": "Kategorie!$A$2:$A$20",
      "strict": true
     },
-    "38:2": {
+    "42:2": {
      "list": [
       "Bez limitu",
       "1",
@@ -316,7 +331,7 @@
      ],
      "strict": true
     },
-    "39:2": {
+    "43:2": {
      "list": [
       "Najlepszy wynik z rundy",
       "Tylko pierwsza próba"
@@ -327,6 +342,20 @@
      "list": [
       "Nie",
       "Tak"
+     ],
+     "strict": true
+    },
+    "16:2": {
+     "list": [
+      "Nie",
+      "Tak"
+     ],
+     "strict": true
+    },
+    "19:2": {
+     "list": [
+      "Średnia",
+      "Suma"
      ],
      "strict": true
     }

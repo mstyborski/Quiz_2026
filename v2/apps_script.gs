@@ -62,6 +62,9 @@ function cfg_() {
     freeLimit: (function (v) { return (v === '' || v === undefined || String(v).toLowerCase().indexOf('bez') === 0) ? 999 : (Number(v) || 999); })(c['Tryb dowolny: limit prób']),
     freeBest: String(c['Tryb dowolny: zasada punktów'] || '').indexOf('Tylko') !== 0,
     random: c['Losowa kolejność pytań'] === 'Tak',
+    streak: c['Bonus za serię poprawnych odpowiedzi'] === 'Tak',
+    teams: String(c['Drużyny (nazwy po przecinku)'] || '').split(/[,;\n]/).map(function (x) { return x.trim().slice(0, 30); }).filter(function (x) { return x; }).slice(0, 12),
+    teamAvg: String(c['Wynik drużyny'] || '').indexOf('Suma') !== 0,
     peer: c['Ponowne głosowanie (peer instruction)'] === 'Tak',
     round: (function (v) { var n = Number(v); return isNaN(n) || n <= 0 ? 0 : Math.floor(n); })(c['Runda quizu']),
     freeFrom: toDate_(c['Tryb dowolny: otwarty od']),
@@ -241,7 +244,7 @@ function setState_(s) {
 function liveRows_(game) {
   var s = sh_(LIVE), last = s.getLastRow();
   if (last < 2) return [];
-  var rows = s.getRange(2, 1, last - 1, 9).getValues().filter(function (r) { return r[1] === game; });
+  var rows = s.getRange(2, 1, last - 1, 10).getValues().filter(function (r) { return r[1] === game; });
   // przy zmianie odpowiedzi liczy się ostatni wpis gracza dla danego pytania
   var seen = {}, out = [];
   rows.forEach(function (r) {
@@ -252,19 +255,43 @@ function liveRows_(game) {
   });
   return out;
 }
-function ranking_(game) {
+// Bonus za serię: druga z rzędu poprawna odpowiedź +100, trzecia +200 … maksymalnie +500 za pytanie.
+function bonus_(n) { return n >= 2 ? Math.min(n - 1, 5) * 100 : 0; }
+// Wyniki graczy gry na żywo: punkty, poprawne, drużyna, bieżąca seria i bonus za każde pytanie (lb: {i: bonus}).
+function liveScores_(game, streakOn) {
+  var by = {}, maxI = -1, rows = liveRows_(game);
+  rows.forEach(function (r) {
+    var n = String(r[2]), i = Number(r[3]);
+    if (!by[n]) by[n] = { name: n, pts: 0, good: 0, team: '', streak: 0, bonus: 0, lb: {}, ans: {} };
+    if (i < 0) { if (r[9]) by[n].team = String(r[9]); return; }
+    by[n].pts += Number(r[6]) || 0; by[n].good += Number(r[5]) || 0; by[n].ans[i] = Number(r[5]) || 0;
+    if (i > maxI) maxI = i;
+  });
+  var arr = Object.keys(by).map(function (k) {
+    var p = by[k], st = 0;
+    if (streakOn) for (var i = 0; i <= maxI; i++) {
+      if (p.ans[i]) { st++; var b = bonus_(st); if (b) { p.lb[i] = b; p.bonus += b; } } else if (p.ans.hasOwnProperty(i) || i < maxI) st = 0;
+    }
+    p.streak = st; p.pts += p.bonus; delete p.ans;
+    return p;
+  });
+  return arr.sort(function (a, b) { return b.pts - a.pts; });
+}
+function ranking_(game, streakOn) {
   var cache = CacheService.getScriptCache(), hit = cache.get('rk');
   if (hit) return JSON.parse(hit);
-  var by = {};
-  liveRows_(game).forEach(function (r) {
-    var n = String(r[2]);
-    if (!by[n]) by[n] = { name: n, pts: 0, good: 0 };
-    if (Number(r[3]) >= 0) { by[n].pts += Number(r[6]) || 0; by[n].good += Number(r[5]) || 0; }
-  });
-  var arr = Object.keys(by).map(function (k) { return by[k]; });
-  arr.sort(function (a, b) { return b.pts - a.pts; });
-  cache.put('rk', JSON.stringify(arr), 2);
+  var arr = liveScores_(game, streakOn);
+  try { cache.put('rk', JSON.stringify(arr), 2); } catch (e) {}
   return arr;
+}
+// Ranking drużyn: średnia (domyślnie) albo suma punktów członków.
+function teamRank_(arr, c) {
+  if (!c.teams.length) return null;
+  var by = {};
+  c.teams.forEach(function (t) { by[t] = { team: t, sum: 0, n: 0 }; });
+  arr.forEach(function (p) { if (p.team && by[p.team]) { by[p.team].sum += p.pts; by[p.team].n++; } });
+  return Object.keys(by).map(function (k) { var t = by[k]; t.pts = c.teamAvg ? (t.n ? Math.round(t.sum / t.n) : 0) : t.sum; return t; })
+    .sort(function (a, b) { return b.pts - a.pts || b.n - a.n; });
 }
 
 // ---------- Ranking bieżący (karta Ranking + wykres) i historia gier ----------
@@ -278,15 +305,7 @@ function uidMap_(scope) {
   });
   return m;
 }
-function liveRank_(game) {   // bez pamięci podręcznej
-  var by = {};
-  liveRows_(game).forEach(function (r) {
-    var n = String(r[2]);
-    if (!by[n]) by[n] = { name: n, pts: 0, good: 0 };
-    if (Number(r[3]) >= 0) { by[n].pts += Number(r[6]) || 0; by[n].good += Number(r[5]) || 0; }
-  });
-  return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.pts - a.pts; });
-}
+function liveRank_(game) { return liveScores_(game, cfg_().streak); }   // bez pamięci podręcznej
 // Karta Ranking: wiersz 1 tytuł, wiersz 2 nagłówki, od wiersza 3 gracze.
 // Kolumny Z:AA (formuły) zasilają wykres, więc ich nie czyścimy.
 function writeRankSheet_(title, arr, uids) {
@@ -382,7 +401,8 @@ function stateOut_(p) {
     q = questionById_(st.ids[st.i]);
     if (q) out.q = pubQ_(q, c, st.phase === 'reveal' || st.phase === 'ranking');
   }
-  var rk = ranking_(st.game);
+  var rk = ranking_(st.game, c.streak);
+  out.streakOn = c.streak; out.teams = c.teams.length ? c.teams : null;
   if (p.name && st.phase === 'question') {   // potwierdzenie dla telefonu: odpowiedź zapisana na serwerze
     var mine = CacheService.getScriptCache().get(akey_(st, String(p.name).slice(0, 20), st.i));
     if (mine !== null) out.mine = Number(mine);
@@ -390,10 +410,14 @@ function stateOut_(p) {
   if (p.name) {
     var pos = -1, me = null;
     rk.forEach(function (r, k) { if (r.name === p.name) { pos = k + 1; me = r; } });
-    out.me = me ? { pts: me.pts, good: me.good, place: pos, of: rk.length } : null;
+    out.me = me ? { pts: me.pts, good: me.good, place: pos, of: rk.length, team: me.team, streak: me.streak } : null;
+    if (me && me.team) {
+      var tr = teamRank_(rk, c) || [];
+      tr.forEach(function (t, k) { if (t.team === me.team) out.me.tplace = { place: k + 1, of: tr.length, pts: t.pts }; });
+    }
     if (me && st.phase === 'reveal') {
       var mine = liveRows_(st.game).filter(function (r) { return String(r[2]) === p.name && Number(r[3]) === st.i; })[0];
-      out.last = mine ? { choice: Number(mine[4]), ok: Number(mine[5]), pts: Number(mine[6]) } : null;
+      out.last = mine ? { choice: Number(mine[4]), ok: Number(mine[5]), pts: Number(mine[6]), bonus: me.lb[st.i] || 0 } : null;
     }
     if (st.phase === 'discuss') {
       var m1 = liveRows_(st.game).filter(function (r) { return String(r[2]) === p.name && Number(r[3]) === st.i; })[0];
@@ -404,13 +428,14 @@ function stateOut_(p) {
     var rows = liveRows_(st.game);
     out.joined = rk.length;
     out.answered = (st.round || 1) > 1 ? roundRows_(st.game, st.i, st.round).length : rows.filter(function (r) { return Number(r[3]) === st.i; }).length;
-    if (st.phase === 'lobby') out.names = rk.map(function (r) { return r.name; });
+    if (st.phase === 'lobby') { out.names = rk.map(function (r) { return r.name; }); out.nteam = rk.map(function (r) { return r.team || ''; }); }
+    if (c.teams.length && st.phase !== 'lobby') out.trank = teamRank_(rk, c);
     if ((st.phase === 'reveal' || st.phase === 'discuss') && q) {
       out.dist = dist_(q, rows.filter(function (r) { return Number(r[3]) === st.i; }));
       if ((st.round || 1) === 2 || st.phase === 'discuss') out.dist1 = dist_(q, round1Rows_(st.game, st.i));
       if (st.phase === 'discuss') delete out.dist;
     }
-    if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'break' || st.phase === 'final') out.rank = rk.slice(0, 10);
+    if (st.phase === 'reveal' || st.phase === 'ranking' || st.phase === 'break' || st.phase === 'final') out.rank = rk.slice(0, 10).map(function (r) { return { name: r.name, pts: r.pts, good: r.good, team: r.team, streak: r.streak }; });
     if (c.mode === 'free') out.freerank = freeRanking_(c).slice(0, 10);
   }
   return out;
@@ -536,15 +561,15 @@ function gpSubmit_(c, p) {
     if (!claimCore_('gp', name, p.tok).ok) return { ok: 0, taken: 1 };
     var rows = gpRows_().filter(function (x) { return Number(x[1]) === r.n && String(x[2]) === key; });
     if (rows.length >= c.gpLimit) return { ok: 0, limit: 1 };
-    var qs = roundQuestions_(r, c), a = String(p.a || '').split(','), m = String(p.m || '').split(','), pts = 0, good = 0, det = [];
+    var qs = roundQuestions_(r, c), a = String(p.a || '').split(','), m = String(p.m || '').split(','), pts = 0, good = 0, det = [], gst = 0;
     qs.forEach(function (q, i) {
       var raw = a[i] === undefined ? '' : String(a[i]), ch = raw === '' ? NaN : num_(raw);
       if (!isFinite(ch)) ch = q.kind === 'num' ? null : -1;
       var ms = Math.min(c.time * 1000, Math.max(0, Number(m[i]) || 0));
-      var sc = ch === null ? { ok: 0, pts: 0 } : score_(q, ch, ms, c.time);
-      if (sc.ok) good++;
-      pts += sc.pts;
-      det.push({ ch: ch, c: q.c, ok: sc.ok, kind: q.kind, val: q.val, tol: q.tol, expl: q.expl, cap: q.cap || mediaFor_(q, c).auto || '' });
+      var sc = ch === null ? { ok: 0, pts: 0 } : score_(q, ch, ms, c.time), bon = 0;
+      if (sc.ok) { good++; gst++; bon = c.streak ? bonus_(gst) : 0; } else gst = 0;
+      pts += sc.pts + bon;
+      det.push({ bonus: bon, ch: ch, c: q.c, ok: sc.ok, kind: q.kind, val: q.val, tol: q.tol, expl: q.expl, cap: q.cap || mediaFor_(q, c).auto || '' });
     });
     var s = sh_(GPA);
     if (!s) { s = SpreadsheetApp.getActive().insertSheet(GPA); s.appendRow(['Czas', 'Runda', 'Klucz', 'Pseudonim', 'Próba', 'Punkty', 'Poprawne']); s.setFrozenRows(1); }
@@ -611,7 +636,7 @@ function idReport() {
   var free = {}, gp = {}, live = {}, game = getState_().game;
   freeRanking_(c).forEach(function (r) { free[nkey_(r.name)] = r; });
   gpRanking_(c).forEach(function (r) { gp[r.key] = { pts: r.total, good: '' }; });
-  ranking_(game).forEach(function (r) { live[nkey_(r.name)] = r; });
+  liveRank_(game).forEach(function (r) { live[nkey_(r.name)] = r; });
   n.getRange(2, 1, n.getLastRow() - 1, 6).getValues().forEach(function (r) {
     var scope = String(r[0]), key = String(r[1]), sc = scope === 'free' ? free[key] : (scope === 'gp' ? gp[key] : (scope === game ? live[key] : null));
     var mode = scope === 'free' ? 'Dowolny moment' : (scope === 'gp' ? 'Grand Prix' : (scope === game ? 'Na żywo (bieżąca gra)' : 'Na żywo (wcześniejsza gra)'));
@@ -653,7 +678,7 @@ function releaseCore_(name) {
 function doGet(e) {
   var p = e.parameter || {}, action = p.action || '', c = cfg_();
   if (action === '') return json_({ open: c.open });                        // zgodność ze starą wersją quizu
-  if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, flimit: c.freeLimit, fbest: c.freeBest }, c));
+  if (action === 'config') return json_(withMeta_({ win: freeWindow_(c, 0), mode: c.mode, open: c.open, time: c.time, phone: c.phone, category: c.category, change: c.change, flimit: c.freeLimit, fbest: c.freeBest, streak: c.streak, teams: c.teams.length ? c.teams : null }, c));
   if (action === 'questions') {
     return json_(withMeta_({ win: freeWindow_(c, 0), time: c.time, open: c.open, change: c.change, questions: pick_(c, freeSeed_(c)).map(function (q) { return pubQ_(q, c, true); }) }, c));
   }
@@ -695,9 +720,11 @@ function doPost(e) {
   if (!name) return json_({ ok: 0 });
   if (type === 'join') {
     if (!d.tok || !claim_(st.game, name, d.tok).ok) return json_({ ok: 0, taken: 1 });
+    if (c.teams.length && c.teams.indexOf(String(d.team || '')) < 0) return json_({ ok: 0, team: 1 });
     if (!cache.get('j|' + st.game + '|' + name)) {
       cache.put('j|' + st.game + '|' + name, '1', 21600);
-      sh_(LIVE).appendRow([new Date(), st.game, name, -1, -1, 0, 0, 0]);
+      var team = c.teams.indexOf(String(d.team || '')) >= 0 ? String(d.team) : '';
+      sh_(LIVE).appendRow([new Date(), st.game, name, -1, -1, 0, 0, 0, '', team]);
       cache.remove('rk');
     }
     return json_({ ok: 1 });
